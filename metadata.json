@@ -1,0 +1,5 @@
+{
+  "name": "Crypto & Market DCA Simulator",
+  "description": "A dollar-cost averaging (DCA) simulator comparing Bitcoin, S&P 500, Nasdaq 100, and Gold over various timeframes with AI-powered analysis.",
+  "requestFramePermissions": []
+}
