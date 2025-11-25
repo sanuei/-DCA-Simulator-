@@ -18,7 +18,7 @@ export const calculateDCA = (
   let lastInvestmentMonth = -1;
 
   const history = relevantData.map((weekData) => {
-    const price = weekData[asset];
+    const price = Number(weekData[asset]);
     const dateObj = new Date(weekData.date);
     const currentMonth = dateObj.getMonth();
 

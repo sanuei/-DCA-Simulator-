@@ -10,15 +10,53 @@ import {
   Settings,
   Calendar,
   DollarSign,
-  PieChart
+  PieChart,
+  CheckCircle2
 } from 'lucide-react';
 
+// Color Palette for Assets
 const COLORS = {
+  // Crypto
   [AssetType.BTC]: '#F7931A',   // Bitcoin Orange
+  [AssetType.ETH]: '#627EEA',   // Ethereum Purple/Blue
+  [AssetType.DOGE]: '#BA9F33',  // Doge Dark Yellow
+  
+  // Indices
   [AssetType.SP500]: '#10B981', // Emerald Green
   [AssetType.NASDAQ]: '#3B82F6', // Blue
+  [AssetType.CSI300]: '#EF4444', // Red (China)
+  [AssetType.HSI]: '#0D9488',   // Teal (HK)
+  [AssetType.NIKKEI]: '#64748B',// Slate (Japan)
+  
+  // Stocks
+  [AssetType.AAPL]: '#9CA3AF',  // Gray
+  [AssetType.MSFT]: '#0EA5E9',  // Light Blue
+  [AssetType.NVDA]: '#84CC16',  // Lime Green
+  [AssetType.TSLA]: '#DC2626',  // Red
+  
+  // Commodities
   [AssetType.GOLD]: '#EAB308',   // Gold
 };
+
+// Grouping for the UI selector
+const ASSET_GROUPS = [
+  { 
+    label: '主流加密貨幣', 
+    assets: [AssetType.BTC, AssetType.ETH, AssetType.DOGE] 
+  },
+  { 
+    label: '全球指數/大盤', 
+    assets: [AssetType.SP500, AssetType.NASDAQ, AssetType.CSI300, AssetType.HSI, AssetType.NIKKEI] 
+  },
+  { 
+    label: '美股科技巨頭', 
+    assets: [AssetType.AAPL, AssetType.MSFT, AssetType.NVDA, AssetType.TSLA] 
+  },
+  { 
+    label: '商品/避險', 
+    assets: [AssetType.GOLD] 
+  },
+];
 
 const App: React.FC = () => {
   // --- State ---
@@ -27,7 +65,6 @@ const App: React.FC = () => {
     AssetType.BTC,
     AssetType.SP500,
     AssetType.NASDAQ,
-    AssetType.GOLD
   ]);
   const [investmentAmount, setInvestmentAmount] = useState<number>(100);
   const [frequency, setFrequency] = useState<Frequency>(Frequency.MONTHLY);
@@ -53,7 +90,7 @@ const App: React.FC = () => {
           mergedPoint[res.asset] = Math.round(res.history[index].portfolioValue);
         }
       });
-      // Add the "Total Invested" line for reference (taking the first asset's invested amount as they are the same inputs)
+      // Add the "Total Invested" line for reference
       mergedPoint['總投入'] = item.invested; 
       return mergedPoint;
     });
@@ -86,7 +123,7 @@ const App: React.FC = () => {
         
         {/* Controls Section */}
         <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             
             {/* Investment Amount */}
             <div className="space-y-2">
@@ -152,30 +189,38 @@ const App: React.FC = () => {
                 ))}
               </div>
             </div>
+          </div>
 
-            {/* Asset Selector */}
-            <div className="space-y-2 lg:col-span-1">
-              <label className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                <PieChart className="w-4 h-4" /> 對比資產
+          {/* Asset Selector (Grouped) */}
+          <div className="space-y-4">
+             <label className="text-sm font-medium text-gray-600 flex items-center gap-1 border-b pb-2">
+                <PieChart className="w-4 h-4" /> 選擇對比資產
               </label>
-              <div className="flex flex-wrap gap-2">
-                {Object.values(AssetType).map(asset => (
-                  <button
-                    key={asset}
-                    onClick={() => toggleAsset(asset)}
-                    className={`flex-1 min-w-[80px] px-2 py-2 rounded-lg border text-xs font-medium transition-all text-center ${
-                      activeAssets.includes(asset)
-                        ? 'border-transparent text-white shadow-md'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                    style={{
-                      backgroundColor: activeAssets.includes(asset) ? COLORS[asset] : undefined
-                    }}
-                  >
-                    {asset}
-                  </button>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {ASSET_GROUPS.map((group) => (
+                <div key={group.label} className="space-y-2">
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{group.label}</h4>
+                  <div className="flex flex-col gap-2">
+                    {group.assets.map(asset => (
+                      <button
+                        key={asset}
+                        onClick={() => toggleAsset(asset)}
+                        className={`relative flex items-center justify-between px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                          activeAssets.includes(asset)
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
+                            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[asset] }}></span>
+                          {asset.split(' ')[0]} {/* Show short name */}
+                        </div>
+                        {activeAssets.includes(asset) && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -183,17 +228,19 @@ const App: React.FC = () => {
         {/* Performance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {results.map(result => (
-            <div key={result.asset} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all">
-              <div className="flex justify-between items-start mb-4">
+            <div key={result.asset} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-transparent to-gray-50 rounded-bl-full -mr-4 -mt-4 opacity-50"></div>
+              
+              <div className="flex justify-between items-start mb-4 relative z-10">
                 <h3 className="font-bold text-gray-800 text-lg truncate pr-2" style={{ color: COLORS[result.asset] }}>
-                  {result.asset}
+                  {result.asset.split(' ')[0]}
                 </h3>
                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${result.roi >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                   {result.roi >= 0 ? '+' : ''}{result.roi.toFixed(1)}%
                 </span>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-4 relative z-10">
                 <div className="flex justify-between items-end">
                   <span className="text-sm text-gray-500">總資產 (Value)</span>
                   <span className="font-bold text-xl text-gray-900">${result.totalValue.toLocaleString()}</span>
@@ -206,9 +253,9 @@ const App: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm pt-1">
+                <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-sm pt-1 border-t border-gray-50 mt-2">
                   <div className="flex flex-col">
-                    <span className="text-gray-400 text-xs">總投入本金</span>
+                    <span className="text-gray-400 text-xs">總投入</span>
                     <span className="font-medium text-gray-700">${result.totalInvested.toLocaleString()}</span>
                   </div>
                   <div className="flex flex-col items-end">
@@ -218,13 +265,13 @@ const App: React.FC = () => {
                     </span>
                   </div>
                    <div className="flex flex-col">
-                    <span className="text-gray-400 text-xs">年化收益率 (CAGR)</span>
+                    <span className="text-gray-400 text-xs">年化 (CAGR)</span>
                     <span className={`font-medium ${result.cagr >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                       {result.cagr.toFixed(1)}%
                     </span>
                   </div>
                    <div className="flex flex-col items-end">
-                    <span className="text-gray-400 text-xs">最終收益率</span>
+                    <span className="text-gray-400 text-xs">最終收益</span>
                     <span className={`font-medium ${result.roi >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                       {result.roi.toFixed(1)}%
                     </span>
@@ -236,7 +283,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Main Chart */}
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-[550px] flex flex-col">
+        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-[600px] flex flex-col">
           <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-gray-500" />
             資產增長趨勢 (Portfolio Growth)
@@ -255,11 +302,16 @@ const App: React.FC = () => {
                 />
                 <YAxis 
                   tick={{ fontSize: 12, fill: '#9CA3AF' }} 
-                  tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`}
+                  tickFormatter={(val) => {
+                     if (val >= 1000000) return `$${(val/1000000).toFixed(1)}M`;
+                     if (val >= 1000) return `$${(val/1000).toFixed(0)}k`;
+                     return `$${val}`;
+                  }}
                   axisLine={false}
                   tickLine={false}
                   domain={['auto', 'auto']}
                   allowDecimals={false}
+                  width={60}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -268,7 +320,7 @@ const App: React.FC = () => {
                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                     padding: '12px'
                   }}
-                  itemStyle={{ padding: 0 }}
+                  itemStyle={{ padding: 2, fontSize: '13px' }}
                   formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
                   labelFormatter={(label) => `日期: ${label}`}
                   labelStyle={{ color: '#6B7280', marginBottom: '8px', fontSize: '12px' }}
@@ -301,6 +353,7 @@ const App: React.FC = () => {
                     dot={false}
                     activeDot={{ r: 6, strokeWidth: 0 }}
                     animationDuration={1500}
+                    name={asset.split(' ')[0]} // Short name for legend
                   />
                 ))}
               </LineChart>
