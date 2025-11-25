@@ -1,29 +1,35 @@
 export enum AssetType {
   // Crypto
-  BTC = '比特幣 (BTC)',
-  ETH = '以太坊 (ETH)',
-  DOGE = '狗狗幣 (DOGE)',
+  BTC = 'BTC',
+  ETH = 'ETH',
+  DOGE = 'DOGE',
   
   // Indices
-  SP500 = '標普500 (S&P500)',
-  NASDAQ = '納斯達克100 (Nasdaq)',
-  CSI300 = '滬深300 (China)',
-  HSI = '恆生指數 (Hong Kong)',
-  NIKKEI = '日經225 (Japan)',
+  SP500 = 'SP500',
+  NASDAQ = 'NASDAQ',
+  CSI300 = 'CSI300',
+  HSI = 'HSI',
+  NIKKEI = 'NIKKEI',
   
   // US Stocks (Tech Giants)
-  AAPL = '蘋果 (AAPL)',
-  MSFT = '微軟 (MSFT)',
-  NVDA = '輝達 (NVDA)',
-  TSLA = '特斯拉 (TSLA)',
+  AAPL = 'AAPL',
+  MSFT = 'MSFT',
+  NVDA = 'NVDA',
+  TSLA = 'TSLA',
 
   // Commodities
-  GOLD = '黃金 (Gold)',
+  GOLD = 'GOLD',
 }
 
 export enum Frequency {
   WEEKLY = 'weekly',
   MONTHLY = 'monthly',
+}
+
+export enum Language {
+  ZH_HANT = 'zh_Hant',
+  ZH_HANS = 'zh_Hans',
+  EN = 'en',
 }
 
 export interface PriceData {
