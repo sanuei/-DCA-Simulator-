@@ -7,27 +7,42 @@ export const calculateDCA = (
   years: number,
   frequency: Frequency
 ): SimulationResult => {
-  // Slice data to the requested timeframe (approx weeks)
-  const weeksCount = years * 52;
-  const relevantData = data.slice(-weeksCount);
+  // Slice data to the requested timeframe (approx days)
+  const daysCount = years * 365;
+  const relevantData = data.slice(-daysCount);
 
   let totalShares = 0;
   let totalInvested = 0;
   let maxPortfolioValue = 0;
   let maxDrawdown = 0;
+  
   let lastInvestmentMonth = -1;
+  let lastInvestmentWeekYearString = "";
 
-  const history = relevantData.map((weekData) => {
-    const price = Number(weekData[asset]);
-    const dateObj = new Date(weekData.date);
+  // Helper to identify weeks (e.g., "2023-W45")
+  const getWeekString = (d: Date) => {
+    const onejan = new Date(d.getFullYear(), 0, 1);
+    const millisecs = d.getTime() - onejan.getTime();
+    const week = Math.ceil((((millisecs / 86400000) + onejan.getDay() + 1) / 7));
+    return `${d.getFullYear()}-W${week}`;
+  };
+
+  const history = relevantData.map((dayData) => {
+    const price = Number(dayData[asset]);
+    const dateObj = new Date(dayData.date);
     const currentMonth = dateObj.getMonth();
-
+    
     let shouldBuy = false;
 
     if (frequency === Frequency.WEEKLY) {
-      shouldBuy = true;
+        // Buy on the first available data point of a new week (e.g. Monday or first day we see)
+        const currentWeekString = getWeekString(dateObj);
+        if (currentWeekString !== lastInvestmentWeekYearString) {
+            shouldBuy = true;
+            lastInvestmentWeekYearString = currentWeekString;
+        }
     } else if (frequency === Frequency.MONTHLY) {
-      // Buy only if we haven't bought in this month yet (simple approximation: buy on first available data point of the month)
+      // Buy on the first available data point of the month
       if (currentMonth !== lastInvestmentMonth) {
         shouldBuy = true;
         lastInvestmentMonth = currentMonth;
@@ -57,7 +72,7 @@ export const calculateDCA = (
     }
 
     return {
-      date: weekData.date,
+      date: dayData.date,
       portfolioValue: currentPortfolioValue,
       invested: totalInvested,
     };
@@ -66,10 +81,7 @@ export const calculateDCA = (
   const finalValue = history.length > 0 ? history[history.length - 1].portfolioValue : 0;
   const roi = totalInvested > 0 ? ((finalValue - totalInvested) / totalInvested) * 100 : 0;
 
-  // CAGR Calculation: (End Value / Start Value)^(1/n) - 1
-  // For DCA, we use a simplified approximation or the total return annualized.
-  // We'll use the standard CAGR formula on the Total Value vs Total Invested 
-  // (Note: This is technically slightly different from IRR for DCA, but standard for these visualizers)
+  // CAGR Calculation
   const cagr = totalInvested > 0 
     ? (Math.pow(finalValue / totalInvested, 1 / years) - 1) * 100 
     : 0;

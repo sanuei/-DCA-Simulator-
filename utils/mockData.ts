@@ -1,9 +1,9 @@
 import { AssetType, PriceData } from '../types';
 
-// Helper to generate a date string YYYY-MM-DD going back N weeks
-const getWeekDate = (weeksAgo: number): string => {
+// Helper to generate a date string YYYY-MM-DD going back N days
+const getDayDate = (daysAgo: number): string => {
   const date = new Date();
-  date.setDate(date.getDate() - (weeksAgo * 7));
+  date.setDate(date.getDate() - daysAgo);
   return date.toISOString().slice(0, 10); // YYYY-MM-DD
 };
 
@@ -13,10 +13,10 @@ const seededRandom = (seed: number) => {
   return x - Math.floor(x);
 };
 
-// Generate 15 years (~780 weeks) of mock data
+// Generate 15 years (~5475 days) of mock data
 export const generateHistoricalData = (): PriceData[] => {
   const years = 15;
-  const weeks = years * 52;
+  const days = years * 365;
   const data: PriceData[] = [];
   
   // Starting approximate prices (normalized for simulation logic)
@@ -39,70 +39,59 @@ export const generateHistoricalData = (): PriceData[] => {
     [AssetType.GOLD]: 1100,
   };
 
-  for (let i = weeks; i >= 0; i--) {
+  for (let i = days; i >= 0; i--) {
     const seedBase = i * 100;
     
     // --- CRYPTO ---
-    // BTC: High volatility, long term exponential
-    const btcVol = (seededRandom(seedBase + 1) - 0.45) * 0.08; 
-    prices[AssetType.BTC] = Math.max(1, prices[AssetType.BTC] * (1.0025 + btcVol));
+    // Daily Volatility is approx Weekly Vol / sqrt(7). Reducing factors by ~2.5-3x
+    const btcVol = (seededRandom(seedBase + 1) - 0.45) * 0.035; 
+    prices[AssetType.BTC] = Math.max(1, prices[AssetType.BTC] * (1.0003 + btcVol));
 
-    // ETH: Higher beta to BTC
-    const ethVol = (seededRandom(seedBase + 2) - 0.45) * 0.09;
-    prices[AssetType.ETH] = Math.max(0.5, prices[AssetType.ETH] * (1.003 + ethVol));
+    const ethVol = (seededRandom(seedBase + 2) - 0.45) * 0.04;
+    prices[AssetType.ETH] = Math.max(0.5, prices[AssetType.ETH] * (1.0004 + ethVol));
 
-    // DOGE: Flat for long time, then crazy volatility
-    const dogeSpike = (weeks - i) > 600 && (seededRandom(seedBase + 3) > 0.95) ? 0.2 : 0;
-    const dogeVol = (seededRandom(seedBase + 3) - 0.48) * 0.12 + dogeSpike;
-    prices[AssetType.DOGE] = Math.max(0.0001, prices[AssetType.DOGE] * (1.001 + dogeVol));
+    // DOGE: Flat then spike
+    const dogeSpike = (days - i) > 4200 && (seededRandom(seedBase + 3) > 0.98) ? 0.1 : 0;
+    const dogeVol = (seededRandom(seedBase + 3) - 0.48) * 0.05 + dogeSpike;
+    prices[AssetType.DOGE] = Math.max(0.0001, prices[AssetType.DOGE] * (1.0001 + dogeVol));
 
     // --- INDICES ---
-    // SP500: Steady
-    const spVol = (seededRandom(seedBase + 4) - 0.48) * 0.025; 
-    prices[AssetType.SP500] = prices[AssetType.SP500] * (1.0018 + spVol);
+    const spVol = (seededRandom(seedBase + 4) - 0.48) * 0.012; 
+    prices[AssetType.SP500] = prices[AssetType.SP500] * (1.00025 + spVol);
 
-    // Nasdaq: Growth
-    const ndxVol = (seededRandom(seedBase + 5) - 0.48) * 0.035;
-    prices[AssetType.NASDAQ] = prices[AssetType.NASDAQ] * (1.0022 + ndxVol);
+    const ndxVol = (seededRandom(seedBase + 5) - 0.48) * 0.016;
+    prices[AssetType.NASDAQ] = prices[AssetType.NASDAQ] * (1.0003 + ndxVol);
 
-    // CSI300 (China): Volatile, periods of stagnation
-    const chinaVol = (seededRandom(seedBase + 6) - 0.5) * 0.045;
-    prices[AssetType.CSI300] = Math.max(2000, prices[AssetType.CSI300] * (1.0005 + chinaVol));
+    const chinaVol = (seededRandom(seedBase + 6) - 0.5) * 0.02;
+    prices[AssetType.CSI300] = Math.max(2000, prices[AssetType.CSI300] * (1.0001 + chinaVol));
 
-    // HSI (HK): Volatile, recent downtrend simulation
-    const hsiTrend = (weeks - i) > 600 ? -0.001 : 0.0005; // Recent drag
-    const hsiVol = (seededRandom(seedBase + 7) - 0.5) * 0.035;
+    const hsiTrend = (days - i) > 4200 ? -0.00015 : 0.00005; 
+    const hsiVol = (seededRandom(seedBase + 7) - 0.5) * 0.018;
     prices[AssetType.HSI] = Math.max(15000, prices[AssetType.HSI] * (1 + hsiTrend + hsiVol));
 
-    // Nikkei: Steady then breakout
-    const nikkeiVol = (seededRandom(seedBase + 8) - 0.45) * 0.025;
-    prices[AssetType.NIKKEI] = prices[AssetType.NIKKEI] * (1.0018 + nikkeiVol);
+    const nikkeiVol = (seededRandom(seedBase + 8) - 0.45) * 0.012;
+    prices[AssetType.NIKKEI] = prices[AssetType.NIKKEI] * (1.00025 + nikkeiVol);
 
     // --- STOCKS ---
-    // AAPL: Consistent compounder
-    const aaplVol = (seededRandom(seedBase + 9) - 0.45) * 0.03;
-    prices[AssetType.AAPL] = prices[AssetType.AAPL] * (1.003 + aaplVol);
+    const aaplVol = (seededRandom(seedBase + 9) - 0.45) * 0.015;
+    prices[AssetType.AAPL] = prices[AssetType.AAPL] * (1.0004 + aaplVol);
 
-    // MSFT: Renaissance
-    const msftVol = (seededRandom(seedBase + 10) - 0.45) * 0.028;
-    prices[AssetType.MSFT] = prices[AssetType.MSFT] * (1.0028 + msftVol);
+    const msftVol = (seededRandom(seedBase + 10) - 0.45) * 0.014;
+    prices[AssetType.MSFT] = prices[AssetType.MSFT] * (1.00035 + msftVol);
 
-    // NVDA: Explosion in recent "years"
-    const nvdaBoom = (weeks - i) > 500 ? 0.004 : 0;
-    const nvdaVol = (seededRandom(seedBase + 11) - 0.45) * 0.05;
-    prices[AssetType.NVDA] = prices[AssetType.NVDA] * (1.002 + nvdaBoom + nvdaVol);
+    const nvdaBoom = (days - i) > 3500 ? 0.0006 : 0;
+    const nvdaVol = (seededRandom(seedBase + 11) - 0.45) * 0.022;
+    prices[AssetType.NVDA] = prices[AssetType.NVDA] * (1.0002 + nvdaBoom + nvdaVol);
 
-    // TSLA: Wild rides
-    const tslaVol = (seededRandom(seedBase + 12) - 0.45) * 0.07;
-    prices[AssetType.TSLA] = prices[AssetType.TSLA] * (1.0035 + tslaVol);
+    const tslaVol = (seededRandom(seedBase + 12) - 0.45) * 0.03;
+    prices[AssetType.TSLA] = prices[AssetType.TSLA] * (1.0005 + tslaVol);
 
     // --- COMMODITIES ---
-    // Gold: Safe haven
-    const goldVol = (seededRandom(seedBase + 13) - 0.5) * 0.02;
-    prices[AssetType.GOLD] = prices[AssetType.GOLD] * (1.001 + goldVol);
+    const goldVol = (seededRandom(seedBase + 13) - 0.5) * 0.01;
+    prices[AssetType.GOLD] = prices[AssetType.GOLD] * (1.00015 + goldVol);
 
     const entry: PriceData = {
-      date: getWeekDate(i),
+      date: getDayDate(i),
       ...prices
     };
     
