@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AssetType, SimulationResult, Frequency, Language } from './types';
-import { MOCK_DATA } from './utils/mockData';
+import { AssetType, PriceData, Frequency, Language } from './types';
+import { loadHistoricalData } from './utils/dataLoader';
 import { calculateDCA } from './utils/finance';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
@@ -51,7 +51,7 @@ const TRANSLATIONS = {
     play: "播放動畫",
     pause: "暫停",
     reset: "重置",
-    source: "數據來源：基於歷史波動率的模擬數據 (Simulated based on historical volatility)",
+    source: "數據來源：Yahoo Finance 真實歷史數據 (Real historical data from Yahoo Finance)",
     assets: {
        [AssetType.BTC]: "比特幣 (BTC)",
        [AssetType.ETH]: "以太坊 (ETH)",
@@ -97,7 +97,7 @@ const TRANSLATIONS = {
     play: "播放动画",
     pause: "暂停",
     reset: "重置",
-    source: "数据来源：基于历史波动率的模拟数据 (Simulated based on historical volatility)",
+    source: "数据来源：Yahoo Finance 真实历史数据 (Real historical data from Yahoo Finance)",
     assets: {
        [AssetType.BTC]: "比特币 (BTC)",
        [AssetType.ETH]: "以太坊 (ETH)",
@@ -143,7 +143,7 @@ const TRANSLATIONS = {
     play: "Play",
     pause: "Pause",
     reset: "Reset",
-    source: "Data Source: Simulated based on historical volatility characteristics.",
+    source: "Data Source: Real historical data from Yahoo Finance.",
     assets: {
        [AssetType.BTC]: "Bitcoin (BTC)",
        [AssetType.ETH]: "Ethereum (ETH)",
@@ -210,6 +210,11 @@ const App: React.FC = () => {
   const [investmentAmount, setInvestmentAmount] = useState<number>(100);
   const [frequency, setFrequency] = useState<Frequency>(Frequency.MONTHLY);
 
+  // 真实历史数据状态
+  const [priceData, setPriceData] = useState<PriceData[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const t = TRANSLATIONS[language];
 
   // Animation State
@@ -221,12 +226,33 @@ const App: React.FC = () => {
   const visualMaxRef = useRef<number>(0);
   const dataMaxRef = useRef<number>(0);
 
+  // --- 加载真实历史数据 ---
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setLoadError(null);
+        console.log('🚀 开始加载真实历史数据...');
+        const data = await loadHistoricalData();
+        setPriceData(data);
+        console.log('✅ 真实历史数据加载成功');
+      } catch (error) {
+        console.error('❌ 加载数据失败:', error);
+        setLoadError('无法加载历史数据，请刷新页面重试');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   // --- Derived State (Calculations) ---
   const results = useMemo(() => {
+    if (priceData.length === 0) return [];
     return activeAssets.map(asset => 
-      calculateDCA(MOCK_DATA, asset, investmentAmount, selectedYears, frequency)
+      calculateDCA(priceData, asset, investmentAmount, selectedYears, frequency)
     );
-  }, [selectedYears, activeAssets, investmentAmount, frequency]);
+  }, [priceData, selectedYears, activeAssets, investmentAmount, frequency]);
 
   // Full History Data
   const chartData = useMemo(() => {
@@ -378,11 +404,95 @@ const App: React.FC = () => {
     );
   };
 
+  // 计算智能的 X 轴刻度点（根据选择的时间范围）
+  const getXAxisTicks = useMemo(() => {
+    if (chartData.length === 0 || displayedChartData.length === 0) return undefined;
+    
+    const startDate = displayedChartData[0]?.date;
+    const endDate = displayedChartData[displayedChartData.length - 1]?.date;
+    
+    if (!startDate || !endDate) return undefined;
+    
+    // 根据选择的年数决定显示密度
+    let intervalMonths: number;
+    if (selectedYears <= 1) {
+      intervalMonths = 1; // 1年以内：每月显示
+    } else if (selectedYears <= 3) {
+      intervalMonths = 3; // 1-3年：每季度显示
+    } else if (selectedYears <= 5) {
+      intervalMonths = 6; // 3-5年：每半年显示
+    } else {
+      intervalMonths = 12; // 5年以上：每年显示
+    }
+    
+    const ticks: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // 从开始日期，按间隔添加刻度点
+    let current = new Date(start.getFullYear(), start.getMonth(), 1);
+    
+    // 创建一个集合来快速查找显示范围内的日期
+    const displayedDates = new Set(displayedChartData.map(d => d.date));
+    
+    while (current <= end) {
+      const yearMonth = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+      
+      // 在完整数据中找到该月份的第一天数据点
+      const found = chartData.find(d => d.date.startsWith(yearMonth) && displayedDates.has(d.date));
+      if (found) {
+        ticks.push(found.date);
+      }
+      
+      // 移动到下个间隔月份
+      current.setMonth(current.getMonth() + intervalMonths);
+    }
+    
+    // 确保最后一个日期也被包含（如果存在）
+    if (endDate && displayedDates.has(endDate) && (!ticks.length || ticks[ticks.length - 1] !== endDate)) {
+      ticks.push(endDate);
+    }
+    
+    return ticks.length > 0 ? ticks : undefined;
+  }, [chartData, displayedChartData, selectedYears]);
+
+  // 加载中状态
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
+          <p className="text-gray-600 text-lg">正在加载真实历史数据...</p>
+          <p className="text-gray-400 text-sm mt-2">Loading real historical data from Yahoo Finance</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 加载错误状态
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">数据加载失败</h2>
+          <p className="text-gray-600 mb-4">{loadError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            重新加载
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 font-sans flex flex-col">
+    <div className="min-h-screen bg-gray-50 font-sans flex flex-col overflow-x-hidden">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
           <div className="flex items-center gap-2">
             <div className="bg-indigo-600 p-2 rounded-lg">
               <TrendingUp className="text-white w-6 h-6" />
@@ -424,13 +534,13 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex-1 flex justify-center">
+      <div className="flex-1 flex justify-center w-full overflow-x-hidden">
         
         {/* Main Content */}
-        <main className="max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <main className="max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6 overflow-x-hidden">
           
           {/* Controls Section */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <section className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 w-full overflow-x-hidden">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               
               {/* Investment Amount */}
@@ -481,7 +591,7 @@ const App: React.FC = () => {
                 <label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                   <Settings className="w-4 h-4" /> {t.timeframe}
                 </label>
-                <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
+                <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-hidden">
                   {[1, 3, 5, 10, 15].map(year => (
                     <button
                       key={year}
@@ -593,14 +703,14 @@ const App: React.FC = () => {
           </div>
 
           {/* Main Chart */}
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-[600px] flex flex-col">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <section className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200 h-[600px] flex flex-col w-full overflow-hidden">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 w-full">
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-gray-500" />
                 {t.chart_title}
               </h3>
 
-              <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-100 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="flex items-center gap-2 sm:gap-4 bg-gray-50 p-2 rounded-lg border border-gray-100 w-full sm:w-auto justify-between sm:justify-end">
                 <div className="flex items-center gap-2">
                   <button 
                     onClick={handlePlayPause}
@@ -627,17 +737,40 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 w-full min-h-0">
+            <div className="flex-1 w-full min-h-0 overflow-hidden">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={displayedChartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                <LineChart 
+                  data={displayedChartData} 
+                  margin={{ 
+                    top: 10, 
+                    right: 10, 
+                    left: 5, 
+                    bottom: 50 
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
                   <XAxis 
                     dataKey="date" 
-                    tick={{ fontSize: 12, fill: '#9CA3AF' }} 
-                    minTickGap={50}
-                    tickFormatter={(val) => val.slice(0, 4)} 
+                    tick={{ fontSize: 11, fill: '#9CA3AF', angle: -45, textAnchor: 'end', dy: 5 }} 
+                    ticks={getXAxisTicks}
+                    tickFormatter={(val) => {
+                      // 显示简化的年月格式: YY/MM (如 23/11)
+                      if (!val) return '';
+                      const dateStr = val.toString();
+                      if (dateStr.length >= 7) {
+                        const year = dateStr.slice(2, 4); // 取年份后两位
+                        const month = dateStr.slice(5, 7); // 取月份
+                        return `${year}/${month}`; // 返回 YY/MM
+                      }
+                      if (dateStr.length >= 4) {
+                        return dateStr.slice(2, 4); // 备用：只显示年份后两位
+                      }
+                      return dateStr;
+                    }}
+                    interval={0}
                     axisLine={false}
                     tickLine={false}
+                    height={60}
                   />
                   <YAxis 
                     tick={{ fontSize: 12, fill: '#9CA3AF' }} 
