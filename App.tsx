@@ -55,6 +55,10 @@ const TRANSLATIONS = {
     assets: {
        [AssetType.BTC]: "比特幣 (BTC)",
        [AssetType.ETH]: "以太坊 (ETH)",
+       [AssetType.SOL]: "Solana (SOL)",
+       [AssetType.BNB]: "幣安幣 (BNB)",
+       [AssetType.XRP]: "瑞波幣 (XRP)",
+       [AssetType.ADA]: "艾達幣 (ADA)",
        [AssetType.DOGE]: "狗狗幣 (DOGE)",
        [AssetType.SP500]: "標普500 (S&P500)",
        [AssetType.NASDAQ]: "納斯達克 (Nasdaq)",
@@ -63,9 +67,17 @@ const TRANSLATIONS = {
        [AssetType.NIKKEI]: "日經225 (Japan)",
        [AssetType.AAPL]: "蘋果 (AAPL)",
        [AssetType.MSFT]: "微軟 (MSFT)",
+       [AssetType.GOOGL]: "谷歌 (GOOGL)",
+       [AssetType.AMZN]: "亞馬遜 (AMZN)",
+       [AssetType.META]: "Meta (META)",
        [AssetType.NVDA]: "輝達 (NVDA)",
        [AssetType.TSLA]: "特斯拉 (TSLA)",
+       [AssetType.NFLX]: "Netflix (NFLX)",
+       [AssetType.AMD]: "AMD (AMD)",
+       [AssetType.INTC]: "英特爾 (INTC)",
        [AssetType.GOLD]: "黃金 (Gold)",
+       [AssetType.SILVER]: "白銀 (Silver)",
+       [AssetType.OIL]: "原油 (Oil)",
     }
   },
   [Language.ZH_HANS]: {
@@ -101,6 +113,10 @@ const TRANSLATIONS = {
     assets: {
        [AssetType.BTC]: "比特币 (BTC)",
        [AssetType.ETH]: "以太坊 (ETH)",
+       [AssetType.SOL]: "Solana (SOL)",
+       [AssetType.BNB]: "币安币 (BNB)",
+       [AssetType.XRP]: "瑞波币 (XRP)",
+       [AssetType.ADA]: "艾达币 (ADA)",
        [AssetType.DOGE]: "狗狗币 (DOGE)",
        [AssetType.SP500]: "标普500 (S&P500)",
        [AssetType.NASDAQ]: "纳斯达克 (Nasdaq)",
@@ -109,9 +125,17 @@ const TRANSLATIONS = {
        [AssetType.NIKKEI]: "日经225 (Japan)",
        [AssetType.AAPL]: "苹果 (AAPL)",
        [AssetType.MSFT]: "微软 (MSFT)",
+       [AssetType.GOOGL]: "谷歌 (GOOGL)",
+       [AssetType.AMZN]: "亚马逊 (AMZN)",
+       [AssetType.META]: "Meta (META)",
        [AssetType.NVDA]: "英伟达 (NVDA)",
        [AssetType.TSLA]: "特斯拉 (TSLA)",
+       [AssetType.NFLX]: "Netflix (NFLX)",
+       [AssetType.AMD]: "AMD (AMD)",
+       [AssetType.INTC]: "英特尔 (INTC)",
        [AssetType.GOLD]: "黄金 (Gold)",
+       [AssetType.SILVER]: "白银 (Silver)",
+       [AssetType.OIL]: "原油 (Oil)",
     }
   },
   [Language.EN]: {
@@ -147,6 +171,10 @@ const TRANSLATIONS = {
     assets: {
        [AssetType.BTC]: "Bitcoin (BTC)",
        [AssetType.ETH]: "Ethereum (ETH)",
+       [AssetType.SOL]: "Solana (SOL)",
+       [AssetType.BNB]: "Binance Coin (BNB)",
+       [AssetType.XRP]: "Ripple (XRP)",
+       [AssetType.ADA]: "Cardano (ADA)",
        [AssetType.DOGE]: "Dogecoin (DOGE)",
        [AssetType.SP500]: "S&P 500",
        [AssetType.NASDAQ]: "Nasdaq 100",
@@ -155,46 +183,99 @@ const TRANSLATIONS = {
        [AssetType.NIKKEI]: "Nikkei 225 (JP)",
        [AssetType.AAPL]: "Apple (AAPL)",
        [AssetType.MSFT]: "Microsoft (MSFT)",
+       [AssetType.GOOGL]: "Google (GOOGL)",
+       [AssetType.AMZN]: "Amazon (AMZN)",
+       [AssetType.META]: "Meta (META)",
        [AssetType.NVDA]: "NVIDIA (NVDA)",
        [AssetType.TSLA]: "Tesla (TSLA)",
+       [AssetType.NFLX]: "Netflix (NFLX)",
+       [AssetType.AMD]: "AMD (AMD)",
+       [AssetType.INTC]: "Intel (INTC)",
        [AssetType.GOLD]: "Gold",
+       [AssetType.SILVER]: "Silver",
+       [AssetType.OIL]: "Crude Oil",
     }
   }
 };
 
 // Color Palette for Assets
 const COLORS = {
+  // Crypto
   [AssetType.BTC]: '#F7931A',
   [AssetType.ETH]: '#627EEA',
+  [AssetType.SOL]: '#9945FF',
+  [AssetType.BNB]: '#F3BA2F',
+  [AssetType.XRP]: '#23292F',
+  [AssetType.ADA]: '#0033AD',
   [AssetType.DOGE]: '#BA9F33',
+  // Indices
   [AssetType.SP500]: '#10B981',
   [AssetType.NASDAQ]: '#3B82F6',
   [AssetType.CSI300]: '#EF4444',
   [AssetType.HSI]: '#0D9488',
   [AssetType.NIKKEI]: '#64748B',
-  [AssetType.AAPL]: '#9CA3AF',
-  [AssetType.MSFT]: '#0EA5E9',
-  [AssetType.NVDA]: '#84CC16',
-  [AssetType.TSLA]: '#DC2626',
-  [AssetType.GOLD]: '#EAB308',
+  // Tech Stocks
+  [AssetType.AAPL]: '#555555',
+  [AssetType.MSFT]: '#0078D4',
+  [AssetType.GOOGL]: '#4285F4',
+  [AssetType.AMZN]: '#FF9900',
+  [AssetType.META]: '#0668E1',
+  [AssetType.NVDA]: '#76B900',
+  [AssetType.TSLA]: '#E82127',
+  [AssetType.NFLX]: '#E50914',
+  [AssetType.AMD]: '#ED1C24',
+  [AssetType.INTC]: '#0071C5',
+  // Commodities
+  [AssetType.GOLD]: '#FFD700',
+  [AssetType.SILVER]: '#C0C0C0',
+  [AssetType.OIL]: '#000000',
 };
 
 const ASSET_GROUPS_CONFIG = [
   { 
     key: 'crypto', 
-    assets: [AssetType.BTC, AssetType.ETH, AssetType.DOGE] 
+    assets: [
+      AssetType.BTC, 
+      AssetType.ETH, 
+      AssetType.SOL, 
+      AssetType.BNB, 
+      AssetType.XRP, 
+      AssetType.ADA, 
+      AssetType.DOGE
+    ] 
   },
   { 
     key: 'indices', 
-    assets: [AssetType.SP500, AssetType.NASDAQ, AssetType.CSI300, AssetType.HSI, AssetType.NIKKEI] 
+    assets: [
+      AssetType.SP500, 
+      AssetType.NASDAQ, 
+      AssetType.CSI300, 
+      AssetType.HSI, 
+      AssetType.NIKKEI
+    ] 
   },
   { 
     key: 'tech', 
-    assets: [AssetType.AAPL, AssetType.MSFT, AssetType.NVDA, AssetType.TSLA] 
+    assets: [
+      AssetType.AAPL, 
+      AssetType.MSFT, 
+      AssetType.GOOGL, 
+      AssetType.AMZN, 
+      AssetType.META, 
+      AssetType.NVDA, 
+      AssetType.TSLA, 
+      AssetType.NFLX, 
+      AssetType.AMD, 
+      AssetType.INTC
+    ] 
   },
   { 
     key: 'commodities', 
-    assets: [AssetType.GOLD] 
+    assets: [
+      AssetType.GOLD, 
+      AssetType.SILVER, 
+      AssetType.OIL
+    ] 
   },
 ];
 

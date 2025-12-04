@@ -2,6 +2,10 @@ export enum AssetType {
   // Crypto
   BTC = 'BTC',
   ETH = 'ETH',
+  SOL = 'SOL',
+  BNB = 'BNB',
+  XRP = 'XRP',
+  ADA = 'ADA',
   DOGE = 'DOGE',
   
   // Indices
@@ -14,11 +18,19 @@ export enum AssetType {
   // US Stocks (Tech Giants)
   AAPL = 'AAPL',
   MSFT = 'MSFT',
+  GOOGL = 'GOOGL',
+  AMZN = 'AMZN',
+  META = 'META',
   NVDA = 'NVDA',
   TSLA = 'TSLA',
+  NFLX = 'NFLX',
+  AMD = 'AMD',
+  INTC = 'INTC',
 
   // Commodities
   GOLD = 'GOLD',
+  SILVER = 'SILVER',
+  OIL = 'OIL',
 }
 
 export enum Frequency {

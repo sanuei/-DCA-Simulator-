@@ -20,9 +20,13 @@ except ImportError:
 # 资产代码映射 (应用内代码 -> Yahoo Finance 代码)
 ASSET_TICKERS = {
     # 加密货币
-    "BTC": "BTC-USD",
-    "ETH": "ETH-USD",
-    "DOGE": "DOGE-USD",
+    "BTC": "BTC-USD",      # 比特币
+    "ETH": "ETH-USD",      # 以太坊
+    "SOL": "SOL-USD",      # Solana
+    "BNB": "BNB-USD",      # Binance Coin
+    "XRP": "XRP-USD",      # Ripple
+    "ADA": "ADA-USD",      # Cardano
+    "DOGE": "DOGE-USD",    # 狗狗币
     
     # 指数
     "SP500": "^GSPC",      # S&P 500
@@ -32,13 +36,21 @@ ASSET_TICKERS = {
     "NIKKEI": "^N225",     # 日经225
     
     # 美股科技巨头
-    "AAPL": "AAPL",
-    "MSFT": "MSFT",
-    "NVDA": "NVDA",
-    "TSLA": "TSLA",
+    "AAPL": "AAPL",        # 苹果
+    "MSFT": "MSFT",        # 微软
+    "GOOGL": "GOOGL",      # Google (Alphabet)
+    "AMZN": "AMZN",        # 亚马逊
+    "META": "META",        # Meta (Facebook)
+    "NVDA": "NVDA",        # 英伟达
+    "TSLA": "TSLA",        # 特斯拉
+    "NFLX": "NFLX",        # Netflix
+    "AMD": "AMD",          # AMD
+    "INTC": "INTC",        # Intel
     
     # 商品
     "GOLD": "GC=F",        # 黄金期货
+    "SILVER": "SI=F",      # 白银期货
+    "OIL": "CL=F",         # 原油期货
 }
 
 def download_asset_data(asset_code: str, ticker: str, years: int = 15) -> pd.DataFrame:
