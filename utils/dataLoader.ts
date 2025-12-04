@@ -5,8 +5,8 @@
 
 import { AssetType, PriceData } from '../types';
 
-// CSV 文件路径
-const DATA_PATH = '/data/all_assets.csv';
+// CSV 文件路径 - 使用相对路径以适配不同的 base 路径
+const DATA_PATH = './data/all_assets.csv';
 
 /**
  * 解析 CSV 字符串为数据数组
