@@ -75,6 +75,10 @@ const TRANSLATIONS = {
        [AssetType.NFLX]: "Netflix (NFLX)",
        [AssetType.AMD]: "AMD (AMD)",
        [AssetType.INTC]: "英特爾 (INTC)",
+       [AssetType.V]: "Visa (V)",
+       [AssetType.JNJ]: "強生 (JNJ)",
+       [AssetType.PFE]: "輝瑞 (PFE)",
+       [AssetType.PG]: "寶潔 (PG)",
        [AssetType.GOLD]: "黃金 (Gold)",
        [AssetType.SILVER]: "白銀 (Silver)",
        [AssetType.OIL]: "原油 (Oil)",
@@ -133,6 +137,10 @@ const TRANSLATIONS = {
        [AssetType.NFLX]: "Netflix (NFLX)",
        [AssetType.AMD]: "AMD (AMD)",
        [AssetType.INTC]: "英特尔 (INTC)",
+       [AssetType.V]: "Visa (V)",
+       [AssetType.JNJ]: "强生 (JNJ)",
+       [AssetType.PFE]: "辉瑞 (PFE)",
+       [AssetType.PG]: "宝洁 (PG)",
        [AssetType.GOLD]: "黄金 (Gold)",
        [AssetType.SILVER]: "白银 (Silver)",
        [AssetType.OIL]: "原油 (Oil)",
@@ -191,6 +199,10 @@ const TRANSLATIONS = {
        [AssetType.NFLX]: "Netflix (NFLX)",
        [AssetType.AMD]: "AMD (AMD)",
        [AssetType.INTC]: "Intel (INTC)",
+       [AssetType.V]: "Visa (V)",
+       [AssetType.JNJ]: "Johnson & Johnson (JNJ)",
+       [AssetType.PFE]: "Pfizer (PFE)",
+       [AssetType.PG]: "Procter & Gamble (PG)",
        [AssetType.GOLD]: "Gold",
        [AssetType.SILVER]: "Silver",
        [AssetType.OIL]: "Crude Oil",
@@ -225,6 +237,10 @@ const COLORS = {
   [AssetType.NFLX]: '#E50914',
   [AssetType.AMD]: '#ED1C24',
   [AssetType.INTC]: '#0071C5',
+  [AssetType.V]: '#1A1F71',
+  [AssetType.JNJ]: '#D51920',
+  [AssetType.PFE]: '#0093D0',
+  [AssetType.PG]: '#003DA5',
   // Commodities
   [AssetType.GOLD]: '#FFD700',
   [AssetType.SILVER]: '#C0C0C0',
@@ -266,7 +282,11 @@ const ASSET_GROUPS_CONFIG = [
       AssetType.TSLA, 
       AssetType.NFLX, 
       AssetType.AMD, 
-      AssetType.INTC
+      AssetType.INTC,
+      AssetType.V,
+      AssetType.JNJ,
+      AssetType.PFE,
+      AssetType.PG
     ] 
   },
   { 
@@ -698,10 +718,10 @@ const App: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {ASSET_GROUPS_CONFIG.map((group: any) => (
                   <div key={group.key} className="space-y-2">
-                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider sticky top-0 bg-white z-10 py-1">
                       {(t.groups as any)[group.key]}
                     </h4>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
                       {group.assets.map((asset: AssetType) => (
                         <button
                           key={asset}

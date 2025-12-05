@@ -46,6 +46,10 @@ ASSET_TICKERS = {
     "NFLX": "NFLX",        # Netflix
     "AMD": "AMD",          # AMD
     "INTC": "INTC",        # Intel
+    "V": "V",              # Visa
+    "JNJ": "JNJ",          # 强生
+    "PFE": "PFE",          # 辉瑞
+    "PG": "PG",            # 宝洁
     
     # 商品
     "GOLD": "GC=F",        # 黄金期货

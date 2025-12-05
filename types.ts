@@ -26,6 +26,10 @@ export enum AssetType {
   NFLX = 'NFLX',
   AMD = 'AMD',
   INTC = 'INTC',
+  V = 'V',
+  JNJ = 'JNJ',
+  PFE = 'PFE',
+  PG = 'PG',
 
   // Commodities
   GOLD = 'GOLD',
