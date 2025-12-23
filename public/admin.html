@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCA 模拟器管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        body {
+            background-color: #f3f4f6;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="font-sans text-gray-800 min-h-screen">
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8 glass-panel p-6 rounded-2xl">
+            <div>
+                <h1 class="text-3xl font-bold text-indigo-600 tracking-tight">DCA 模拟器管理后台</h1>
+                <p class="text-sm text-gray-500 mt-1">管理用户、激活码和系统统计</p>
+            </div>
+            <div class="flex gap-4 items-center">
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border text-sm">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-gray-600 font-mono" id="statusIndicator">已连接</span>
+                </div>
+                <button onclick="logout()" class="text-gray-500 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-gray-100">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Login Overlay -->
+        <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm transition-opacity duration-300">
+            <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-100">
+                <div class="text-center mb-6">
+                    <div class="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-indigo-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">管理员登录</h2>
+                    <p class="text-sm text-gray-500 mt-1">输入凭据访问管理后台</p>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">API 地址</label>
+                        <input type="text" id="apiUrlInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="https://..." value="https://dca-simulator-api.sonic980828.workers.dev">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">管理员密码</label>
+                        <input type="password" id="passwordInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" placeholder="••••••••">
+                    </div>
+                    <button onclick="login()" class="w-full bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-lg shadow-indigo-200">
+                        访问管理后台
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content (Hidden by default) -->
+        <div id="dashboardContent" class="hidden space-y-8 opacity-0 transition-opacity duration-500">
+            
+            <!-- Navigation Tabs -->
+            <div class="border-b border-gray-200">
+              <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button onclick="switchTab('overview')" id="tab-overview" class="border-indigo-500 text-indigo-600 px-1 py-4 border-b-2 font-medium text-sm">
+                  概览
+                </button>
+                <button onclick="switchTab('data')" id="tab-data" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 px-1 py-4 border-b-2 font-medium text-sm">
+                  数据管理
+                </button>
+              </nav>
+            </div>
+
+            <!-- Overview Tab -->
+            <div id="view-overview" class="space-y-8">
+                <!-- Stats Overview -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-indigo-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">总用户数</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-1" id="statTotalUsers">-</h3>
+                            </div>
+                            <div class="bg-indigo-50 p-2 rounded-lg text-indigo-600">
+                                <i data-lucide="users" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">已生成激活码</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-1" id="statTotalCodes">-</h3>
+                            </div>
+                            <div class="bg-emerald-50 p-2 rounded-lg text-emerald-600">
+                                <i data-lucide="ticket" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border-l-4 border-amber-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500 uppercase tracking-wide">活跃 Pro 用户</p>
+                                <h3 class="text-3xl font-bold text-gray-900 mt-1">N/A</h3>
+                            </div>
+                            <div class="bg-amber-50 p-2 rounded-lg text-amber-600">
+                                <i data-lucide="crown" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Code Generator -->
+                    <div class="lg:col-span-1">
+                        <div class="glass-panel p-6 rounded-2xl h-full">
+                            <h3 class="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                <i data-lucide="plus-circle" class="w-5 h-5 text-indigo-600"></i> 生成激活码
+                            </h3>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">会员类型</label>
+                                    <select id="codeType" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                        <option value="pro_monthly">Pro 月卡</option>
+                                        <option value="pro_yearly">Pro 年卡</option>
+                                        <option value="pro_lifetime">Pro 终身</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">有效期（天）</label>
+                                        <input type="number" id="codeDuration" value="30" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">数量</label>
+                                        <input type="number" id="codeCount" value="1" min="1" max="50" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                    </div>
+                                </div>
+                                
+                                <button onclick="generateCodes()" id="generateBtn" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center justify-center gap-2 mt-2">
+                                    <i data-lucide="zap" class="w-4 h-4"></i> 生成
+                                </button>
+
+                                <!-- Output Area -->
+                                <div id="codeOutput" class="mt-4 hidden">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">已生成的激活码：</label>
+                                    <textarea readonly class="w-full h-32 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs font-mono text-gray-600 resize-none focus:outline-none" id="codeTextarea"></textarea>
+                                    <button onclick="copyCodes()" class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1">
+                                        <i data-lucide="copy" class="w-3 h-3"></i> 复制到剪贴板
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Data Tables -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Users List -->
+                        <div class="glass-panel p-6 rounded-2xl">
+                            <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <i data-lucide="user-check" class="w-5 h-5 text-indigo-600"></i> 最近用户
+                            </h3>
+                            <button onclick="loadUsers()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-md transition-colors">
+                                刷新
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-xs text-gray-500 border-b border-gray-200">
+                                        <th class="pb-3 pl-2 font-medium">用户 ID（设备）</th>
+                                        <th class="pb-3 font-medium">状态</th>
+                                        <th class="pb-3 font-medium">加入时间</th>
+                                        <th class="pb-3 font-medium">邀请人</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody" class="text-sm text-gray-700">
+                                    <tr><td colspan="4" class="py-4 text-center text-gray-400">加载中...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Codes List -->
+                        <div class="glass-panel p-6 rounded-2xl">
+                            <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <i data-lucide="key" class="w-5 h-5 text-indigo-600"></i> 最近激活码
+                            </h3>
+                            <button onclick="loadCodes()" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-1 rounded-md transition-colors">
+                                刷新
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-xs text-gray-500 border-b border-gray-200">
+                                        <th class="pb-3 pl-2 font-medium">激活码</th>
+                                        <th class="pb-3 font-medium">类型</th>
+                                        <th class="pb-3 font-medium">状态</th>
+                                        <th class="pb-3 font-medium">创建时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="codesTableBody" class="text-sm text-gray-700">
+                                    <tr><td colspan="4" class="py-4 text-center text-gray-400">加载中...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Management Tab -->
+            <div id="view-data" class="hidden space-y-6">
+                <!-- Update Data Card -->
+                <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-white/20 p-6">
+                  <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="database" class="w-5 h-5 text-indigo-600"></i>
+                    更新历史数据
+                  </h3>
+                  <div class="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6 text-sm">
+                    <p><strong>说明：</strong> 此工具从 Yahoo Finance 获取所有已配置资产的数据并更新到 KV 存储。</p>
+                    <p class="mt-1">自动更新将在每月 1 号 00:00 UTC 运行。</p>
+                  </div>
+                  
+                  <div class="flex flex-wrap items-center gap-4">
+                     <select id="updateRange" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <option value="1mo">最近 1 个月</option>
+                        <option value="3mo">最近 3 个月</option>
+                        <option value="1y">最近 1 年</option>
+                        <option value="5y">最近 5 年</option>
+                        <option value="max">全部历史（较慢）</option>
+                     </select>
+                     <button onclick="triggerUpdate()" id="btnUpdate" class="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        立即更新
+                     </button>
+                  </div>
+                  <div id="updateStatus" class="mt-4 text-sm font-medium hidden"></div>
+                </div>
+
+                <!-- Asset Configuration Card -->
+                <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-sm border border-white/20 p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="list" class="w-5 h-5 text-indigo-600"></i>
+                        资产配置
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                        <input type="text" id="newSymbol" placeholder="代码 Symbol (BTC)" class="px-3 py-2 border rounded-lg text-sm">
+                        <input type="text" id="newYahoo" placeholder="Yahoo 代码 (BTC-USD)" class="px-3 py-2 border rounded-lg text-sm">
+                        <input type="text" id="newName" placeholder="名称 (比特幣)" class="px-3 py-2 border rounded-lg text-sm">
+                        
+                        <select id="newType" class="px-3 py-2 border rounded-lg text-sm">
+                            <option value="crypto">加密货币 Crypto</option>
+                            <option value="index">指数 Index</option>
+                            <option value="stock">股票 Stock</option>
+                            <option value="commodity">商品 Commodity</option>
+                        </select>
+                        
+                        <select id="newGroup" class="px-3 py-2 border rounded-lg text-sm">
+                            <option value="crypto">分组: 加密货币</option>
+                            <option value="indices">分组: 指数</option>
+                            <option value="tech">分组: 科技股</option>
+                            <option value="commodities">分组: 商品</option>
+                        </select>
+                        
+                        <input type="color" id="newColor" value="#F7931A" class="px-2 py-1 border rounded-lg h-10" title="颜色">
+                        
+                        <div class="flex items-center gap-2 px-3 py-2 border rounded-lg text-sm">
+                            <input type="checkbox" id="newIsFree" class="w-4 h-4">
+                            <label for="newIsFree" class="text-gray-700">免费资产</label>
+                        </div>
+                        
+                        <input type="number" id="newOrder" placeholder="顺序 (1,2,3...)" value="1" min="1" class="px-3 py-2 border rounded-lg text-sm">
+                        
+                        <button onclick="addAsset()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex items-center justify-center gap-2">
+                            <i data-lucide="plus" class="w-4 h-4"></i> 添加资产
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50/50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">代码</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">Yahoo</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">名称</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500">分组</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500">颜色</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500">免费</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500">顺序</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetsTable" class="divide-y divide-gray-100">
+                                <!-- Assets will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center">
+                        <button onclick="initDefaultConfig()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 shadow-md text-sm flex items-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            初始化默认配置
+                        </button>
+                        <button onclick="saveConfig()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 shadow-md font-medium">
+                            保存配置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // State
+        let CREDENTIALS = {
+            url: localStorage.getItem('dca_api_url') || 'https://dca.soniclab.cc',
+            pass: localStorage.getItem('dca_admin_pass') || ''
+        };
+
+        // --- 自动修正旧域名 ---
+        if (CREDENTIALS.url.includes('sonic-yann.workers.dev')) {
+            CREDENTIALS.url = 'https://dca-simulator-api.sonic980828.workers.dev';
+            localStorage.setItem('dca_api_url', CREDENTIALS.url);
+            console.log('✅ 已自动修正旧 API 域名');
+        }
+
+        let ASSETS_CONFIG = [];
+
+        // Init
+        document.getElementById('apiUrlInput').value = CREDENTIALS.url;
+        document.getElementById('passwordInput').value = CREDENTIALS.pass;
+
+        if (CREDENTIALS.pass) {
+            // Auto login attempt
+            toggleDashboard(true);
+            loadAllData();
+        }
+
+        function login() {
+            const url = document.getElementById('apiUrlInput').value;
+            const pass = document.getElementById('passwordInput').value;
+            
+            if (!url || !pass) return alert('Please fill in all fields');
+
+            CREDENTIALS = { url, pass };
+            localStorage.setItem('dca_api_url', url);
+            localStorage.setItem('dca_admin_pass', pass);
+            
+            toggleDashboard(true);
+            loadAllData();
+        }
+
+        function logout() {
+            localStorage.removeItem('dca_admin_pass');
+            location.reload();
+        }
+
+        function toggleDashboard(show) {
+            const overlay = document.getElementById('loginOverlay');
+            const content = document.getElementById('dashboardContent');
+            
+            if (show) {
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                content.classList.remove('hidden');
+                setTimeout(() => content.classList.remove('opacity-0'), 100);
+            } else {
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+                content.classList.add('hidden', 'opacity-0');
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('border-indigo-500', 'text-indigo-600');
+                el.classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('tab-' + tab).classList.remove('border-transparent', 'text-gray-500');
+            document.getElementById('tab-' + tab).classList.add('border-indigo-500', 'text-indigo-600');
+
+            if (tab === 'data') loadAssetsConfig();
+        }
+
+        async function fetchAPI(endpoint, method = 'GET', body = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Password': CREDENTIALS.pass
+                    }
+                };
+                if (body) options.body = JSON.stringify(body);
+                
+                const res = await fetch(`${CREDENTIALS.url}${endpoint}`, options);
+                const data = await res.json();
+                
+                if (!data.success && res.status === 401) {
+                    alert('Invalid Password');
+                    logout();
+                    return null;
+                }
+                return data;
+            } catch (e) {
+                console.error(e);
+                alert('Network Error');
+                return null;
+            }
+        }
+
+        async function loadAllData() {
+            loadStats();
+            loadUsers();
+            loadCodes();
+        }
+
+        async function loadStats() {
+            const data = await fetchAPI('/api/admin/dashboard-stats');
+            if (data && data.success) {
+                document.getElementById('statTotalUsers').innerText = data.data.totalUsers || 0;
+                document.getElementById('statTotalCodes').innerText = data.data.totalCodes || 0;
+            }
+        }
+
+        async function loadUsers() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">Loading...</td></tr>';
+            
+            const data = await fetchAPI('/api/admin/users');
+            if (data && data.success) {
+                tbody.innerHTML = '';
+                if (data.data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">No users found</td></tr>';
+                    return;
+                }
+                
+                data.data.users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-100 hover:bg-gray-50 transition-colors';
+                    const date = new Date(user.createdAt).toLocaleDateString();
+                    const statusClass = user.tier === 'pro' 
+                        ? 'bg-amber-100 text-amber-800 border-amber-200' 
+                        : 'bg-gray-100 text-gray-600 border-gray-200';
+                    
+                    row.innerHTML = `
+                        <td class="py-3 pl-2 font-mono text-xs text-gray-600 truncate max-w-[150px]" title="${user.id}">${user.id.substring(0, 12)}...</td>
+                        <td class="py-3"><span class="px-2 py-0.5 rounded text-xs font-medium border ${statusClass}">${user.tier.toUpperCase()}</span></td>
+                        <td class="py-3 text-xs text-gray-500">${date}</td>
+                        <td class="py-3 text-xs text-gray-400">${user.invitedBy ? 'Yes' : '-'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function loadCodes() {
+            const tbody = document.getElementById('codesTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">Loading...</td></tr>';
+            
+            const data = await fetchAPI('/api/admin/codes');
+            if (data && data.success) {
+                tbody.innerHTML = '';
+                if (data.data.codes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">No codes found</td></tr>';
+                    return;
+                }
+
+                data.data.codes.forEach(code => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-100 hover:bg-gray-50 transition-colors';
+                    const date = new Date(code.createdAt).toLocaleDateString();
+                    const statusClass = code.status === 'unused' 
+                        ? 'bg-green-100 text-green-800 border-green-200' 
+                        : 'bg-gray-100 text-gray-500 border-gray-200 line-through';
+                    
+                    row.innerHTML = `
+                        <td class="py-3 pl-2 font-mono text-xs font-semibold text-gray-700">${code.code}</td>
+                        <td class="py-3 text-xs text-gray-500">${code.type} (${code.durationDays}d)</td>
+                        <td class="py-3"><span class="px-2 py-0.5 rounded text-xs font-medium border ${statusClass}">${code.status}</span></td>
+                        <td class="py-3 text-xs text-gray-500">${date}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        async function generateCodes() {
+            const btn = document.getElementById('generateBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Generating...';
+            btn.disabled = true;
+
+            const type = document.getElementById('codeType').value;
+            const duration = parseInt(document.getElementById('codeDuration').value);
+            const count = parseInt(document.getElementById('codeCount').value);
+
+            const data = await fetchAPI('/api/code/generate', 'POST', { type, durationDays: duration, count });
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            lucide.createIcons();
+
+            if (data && data.success) {
+                document.getElementById('codeOutput').classList.remove('hidden');
+                document.getElementById('codeTextarea').value = data.data.codes.join('\n');
+                loadStats(); // Update stats
+                loadCodes(); // Update list
+            }
+        }
+
+        function copyCodes() {
+            const el = document.getElementById('codeTextarea');
+            el.select();
+            document.execCommand('copy');
+            alert('Codes copied to clipboard!');
+        }
+
+        // --- Data Management Functions ---
+
+        async function loadAssetsConfig() {
+            const tbody = document.getElementById('assetsTable');
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400">Loading config...</td></tr>';
+
+            const data = await fetchAPI('/api/admin/assets/config');
+            if (data && data.success) {
+                ASSETS_CONFIG = data.data.config || [];
+                renderAssetsTable();
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-red-400">Failed to load config</td></tr>';
+            }
+        }
+
+        function renderAssetsTable() {
+            const tbody = document.getElementById('assetsTable');
+            tbody.innerHTML = '';
+            
+            if (ASSETS_CONFIG.length === 0) {
+                 tbody.innerHTML = '<tr><td colspan="8" class="py-4 text-center text-gray-400">暂无资产配置，请在上方添加</td></tr>';
+                 return;
+            }
+
+            // Sort by group and order
+            const sorted = [...ASSETS_CONFIG].sort((a, b) => {
+                if (a.group !== b.group) return a.group.localeCompare(b.group);
+                return a.order - b.order;
+            });
+
+            sorted.forEach((asset, index) => {
+                const originalIndex = ASSETS_CONFIG.indexOf(asset);
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-100 hover:bg-gray-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-gray-900">${asset.symbol}</td>
+                    <td class="px-4 py-3 text-gray-500 font-mono text-xs">${asset.yahooSymbol}</td>
+                    <td class="px-4 py-3 text-gray-700">${asset.name}</td>
+                    <td class="px-4 py-3 text-gray-600 capitalize">${asset.group}</td>
+                    <td class="px-4 py-3 text-center">
+                        <div class="w-8 h-8 rounded mx-auto border-2 border-gray-200" style="background-color: ${asset.color}" title="${asset.color}"></div>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        ${asset.isFree 
+                            ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">✓ 免费</span>' 
+                            : '<span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Pro</span>'}
+                    </td>
+                    <td class="px-4 py-3 text-center text-gray-600">${asset.order}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="editAsset(${originalIndex})" class="text-blue-600 hover:text-blue-900 text-xs font-medium mr-2">编辑</button>
+                        <button onclick="removeAsset(${originalIndex})" class="text-red-600 hover:text-red-900 text-xs font-medium">删除</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function addAsset() {
+            const symbol = document.getElementById('newSymbol').value.trim().toUpperCase();
+            const yahooSymbol = document.getElementById('newYahoo').value.trim();
+            const name = document.getElementById('newName').value.trim();
+            const type = document.getElementById('newType').value;
+            const group = document.getElementById('newGroup').value;
+            const color = document.getElementById('newColor').value;
+            const isFree = document.getElementById('newIsFree').checked;
+            const order = parseInt(document.getElementById('newOrder').value) || 1;
+
+            if (!symbol || !yahooSymbol || !name) {
+                alert('请填写完整的资产信息（代码、Yahoo代码、名称）');
+                return;
+            }
+
+            // Simple validation
+            if (ASSETS_CONFIG.find(a => a.symbol === symbol)) {
+                alert('该资产代码已存在');
+                return;
+            }
+
+            ASSETS_CONFIG.push({ 
+                symbol, 
+                yahooSymbol, 
+                name, 
+                type, 
+                group, 
+                color, 
+                isFree, 
+                order 
+            });
+            renderAssetsTable();
+            lucide.createIcons();
+            
+            // Clear inputs
+            document.getElementById('newSymbol').value = '';
+            document.getElementById('newYahoo').value = '';
+            document.getElementById('newName').value = '';
+            document.getElementById('newColor').value = '#F7931A';
+            document.getElementById('newIsFree').checked = false;
+            document.getElementById('newOrder').value = '1';
+        }
+
+        function editAsset(index) {
+            const asset = ASSETS_CONFIG[index];
+            if (!asset) return;
+            
+            document.getElementById('newSymbol').value = asset.symbol;
+            document.getElementById('newYahoo').value = asset.yahooSymbol;
+            document.getElementById('newName').value = asset.name;
+            document.getElementById('newType').value = asset.type;
+            document.getElementById('newGroup').value = asset.group;
+            document.getElementById('newColor').value = asset.color;
+            document.getElementById('newIsFree').checked = asset.isFree;
+            document.getElementById('newOrder').value = asset.order;
+            
+            // Remove the old asset
+            ASSETS_CONFIG.splice(index, 1);
+            renderAssetsTable();
+            
+            // Scroll to form
+            document.getElementById('newSymbol').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function removeAsset(index) {
+            if(confirm('Are you sure?')) {
+                ASSETS_CONFIG.splice(index, 1);
+                renderAssetsTable();
+            }
+        }
+
+        async function saveConfig() {
+            const res = await fetchAPI('/api/admin/assets/config', 'POST', { config: ASSETS_CONFIG });
+            if (res && res.success) {
+                alert('✅ 配置保存成功！');
+            }
+        }
+
+        async function initDefaultConfig() {
+            if (!confirm('确定要重置为默认配置吗？这将清空当前配置。')) return;
+            
+            try {
+                // Fetch default config from public API
+                const res = await fetch(`${CREDENTIALS.url}/api/assets/config`);
+                if (res.ok) {
+                    const defaultConfig = await res.json();
+                    ASSETS_CONFIG = defaultConfig;
+                    renderAssetsTable();
+                    lucide.createIcons();
+                    alert('✅ 已加载默认配置（共 ' + defaultConfig.length + ' 个资产）');
+                } else {
+                    alert('❌ 无法获取默认配置');
+                }
+            } catch (e) {
+                console.error('Failed to load default config:', e);
+                alert('❌ 加载默认配置失败');
+            }
+        }
+
+        async function triggerUpdate() {
+            const range = document.getElementById('updateRange').value;
+            const btn = document.getElementById('btnUpdate');
+            const status = document.getElementById('updateStatus');
+            
+            const originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Updating...';
+            status.classList.remove('hidden', 'text-green-600', 'text-red-600');
+            status.className = 'mt-4 text-sm font-medium text-gray-500';
+            status.innerHTML = 'Fetching data from Yahoo Finance... This may take a few seconds.';
+
+            const res = await fetchAPI('/api/admin/assets/update-data', 'POST', { range });
+            
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+            lucide.createIcons();
+
+            if (res && res.success) {
+                status.classList.add('text-green-600');
+                status.innerHTML = `✅ Success! ${res.data.message}`;
+            } else {
+                status.classList.add('text-red-600');
+                status.innerHTML = `❌ Error: ${res ? res.error : 'Network Error'}`;
+            }
+        }
+    </script>
+</body>
+</html>

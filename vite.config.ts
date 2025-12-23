@@ -6,6 +6,10 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       base: '/dca-simulator/',
+      build: {
+        outDir: 'dist/dca-simulator',
+        emptyOutDir: true
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',

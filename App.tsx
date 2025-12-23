@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AssetType, PriceData, Frequency, Language } from './types';
-import { loadHistoricalData } from './utils/dataLoader';
+import { AssetType, PriceData, Frequency, Language, AssetConfig } from './types';
+import { loadHistoricalData, isUsingFallback } from './utils/dataLoader';
 import { calculateDCA } from './utils/finance';
+import { useUserStore } from './src/store/userStore';
+import { AuthModal } from './src/components/AuthModal';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
@@ -17,296 +19,62 @@ import {
   RotateCcw,
   Clock,
   Globe,
-  Info
+  Info,
+  Crown,
+  Lock,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Plus,
+  Share2
 } from 'lucide-react';
+import { TRANSLATIONS } from './src/utils/translations';
 
-// --- Translations ---
-const TRANSLATIONS = {
-  [Language.ZH_HANT]: {
-    title: "定投回測模擬器",
-    subtitle: "DCA Simulator",
-    follow: "Follow @sonic_yann",
-    amount: "定投金額 (USD)",
-    frequency: "定投頻率",
-    monthly: "每月",
-    weekly: "每週",
-    timeframe: "回測時長",
-    year: "年",
-    assets_label: "選擇對比資產",
-    groups: {
-      crypto: "主流加密貨幣",
-      indices: "全球指數/大盤",
-      tech: "美股科技巨頭",
-      commodities: "商品/避險"
-    },
-    stats: {
-      total_value: "總資產 (Value)",
-      invested: "總投入",
-      drawdown: "最大回撤",
-      cagr: "年化 (CAGR)",
-      roi: "最終收益",
-      total_invested_legend: "總投入本金"
-    },
-    chart_title: "資產增長趨勢 (Portfolio Growth)",
-    play: "播放動畫",
-    pause: "暫停",
-    reset: "重置",
-    source: "數據來源：Yahoo Finance 真實歷史數據 (Real historical data from Yahoo Finance)",
-    assets: {
-       [AssetType.BTC]: "比特幣 (BTC)",
-       [AssetType.ETH]: "以太坊 (ETH)",
-       [AssetType.SOL]: "Solana (SOL)",
-       [AssetType.BNB]: "幣安幣 (BNB)",
-       [AssetType.XRP]: "瑞波幣 (XRP)",
-       [AssetType.ADA]: "艾達幣 (ADA)",
-       [AssetType.DOGE]: "狗狗幣 (DOGE)",
-       [AssetType.SP500]: "標普500 (S&P500)",
-       [AssetType.NASDAQ]: "納斯達克 (Nasdaq)",
-       [AssetType.CSI300]: "滬深300 (China)",
-       [AssetType.HSI]: "恆生指數 (HK)",
-       [AssetType.NIKKEI]: "日經225 (Japan)",
-       [AssetType.AAPL]: "蘋果 (AAPL)",
-       [AssetType.MSFT]: "微軟 (MSFT)",
-       [AssetType.GOOGL]: "谷歌 (GOOGL)",
-       [AssetType.AMZN]: "亞馬遜 (AMZN)",
-       [AssetType.META]: "Meta (META)",
-       [AssetType.NVDA]: "輝達 (NVDA)",
-       [AssetType.TSLA]: "特斯拉 (TSLA)",
-       [AssetType.NFLX]: "Netflix (NFLX)",
-       [AssetType.AMD]: "AMD (AMD)",
-       [AssetType.INTC]: "英特爾 (INTC)",
-       [AssetType.V]: "Visa (V)",
-       [AssetType.JNJ]: "強生 (JNJ)",
-       [AssetType.PFE]: "輝瑞 (PFE)",
-       [AssetType.PG]: "寶潔 (PG)",
-       [AssetType.GOLD]: "黃金 (Gold)",
-       [AssetType.SILVER]: "白銀 (Silver)",
-       [AssetType.OIL]: "原油 (Oil)",
-    }
-  },
-  [Language.ZH_HANS]: {
-    title: "定投回测模拟器",
-    subtitle: "DCA Simulator",
-    follow: "关注 @sonic_yann",
-    amount: "定投金额 (USD)",
-    frequency: "定投频率",
-    monthly: "每月",
-    weekly: "每周",
-    timeframe: "回测时长",
-    year: "年",
-    assets_label: "选择对比资产",
-    groups: {
-      crypto: "主流加密货币",
-      indices: "全球指数/大盘",
-      tech: "美股科技巨头",
-      commodities: "商品/避险"
-    },
-    stats: {
-      total_value: "总资产 (Value)",
-      invested: "总投入",
-      drawdown: "最大回撤",
-      cagr: "年化 (CAGR)",
-      roi: "最终收益",
-      total_invested_legend: "总投入本金"
-    },
-    chart_title: "资产增长趋势 (Portfolio Growth)",
-    play: "播放动画",
-    pause: "暂停",
-    reset: "重置",
-    source: "数据来源：Yahoo Finance 真实历史数据 (Real historical data from Yahoo Finance)",
-    assets: {
-       [AssetType.BTC]: "比特币 (BTC)",
-       [AssetType.ETH]: "以太坊 (ETH)",
-       [AssetType.SOL]: "Solana (SOL)",
-       [AssetType.BNB]: "币安币 (BNB)",
-       [AssetType.XRP]: "瑞波币 (XRP)",
-       [AssetType.ADA]: "艾达币 (ADA)",
-       [AssetType.DOGE]: "狗狗币 (DOGE)",
-       [AssetType.SP500]: "标普500 (S&P500)",
-       [AssetType.NASDAQ]: "纳斯达克 (Nasdaq)",
-       [AssetType.CSI300]: "沪深300 (China)",
-       [AssetType.HSI]: "恒生指数 (HK)",
-       [AssetType.NIKKEI]: "日经225 (Japan)",
-       [AssetType.AAPL]: "苹果 (AAPL)",
-       [AssetType.MSFT]: "微软 (MSFT)",
-       [AssetType.GOOGL]: "谷歌 (GOOGL)",
-       [AssetType.AMZN]: "亚马逊 (AMZN)",
-       [AssetType.META]: "Meta (META)",
-       [AssetType.NVDA]: "英伟达 (NVDA)",
-       [AssetType.TSLA]: "特斯拉 (TSLA)",
-       [AssetType.NFLX]: "Netflix (NFLX)",
-       [AssetType.AMD]: "AMD (AMD)",
-       [AssetType.INTC]: "英特尔 (INTC)",
-       [AssetType.V]: "Visa (V)",
-       [AssetType.JNJ]: "强生 (JNJ)",
-       [AssetType.PFE]: "辉瑞 (PFE)",
-       [AssetType.PG]: "宝洁 (PG)",
-       [AssetType.GOLD]: "黄金 (Gold)",
-       [AssetType.SILVER]: "白银 (Silver)",
-       [AssetType.OIL]: "原油 (Oil)",
-    }
-  },
-  [Language.EN]: {
-    title: "DCA Simulator",
-    subtitle: "Backtest Tool",
-    follow: "Follow @sonic_yann",
-    amount: "Amount (USD)",
-    frequency: "Frequency",
-    monthly: "Monthly",
-    weekly: "Weekly",
-    timeframe: "Duration",
-    year: "Y",
-    assets_label: "Select Assets",
-    groups: {
-      crypto: "Cryptocurrencies",
-      indices: "Global Indices",
-      tech: "Tech Giants",
-      commodities: "Commodities"
-    },
-    stats: {
-      total_value: "Total Value",
-      invested: "Invested",
-      drawdown: "Max Drawdown",
-      cagr: "CAGR",
-      roi: "Total ROI",
-      total_invested_legend: "Total Invested"
-    },
-    chart_title: "Portfolio Growth Trend",
-    play: "Play",
-    pause: "Pause",
-    reset: "Reset",
-    source: "Data Source: Real historical data from Yahoo Finance.",
-    assets: {
-       [AssetType.BTC]: "Bitcoin (BTC)",
-       [AssetType.ETH]: "Ethereum (ETH)",
-       [AssetType.SOL]: "Solana (SOL)",
-       [AssetType.BNB]: "Binance Coin (BNB)",
-       [AssetType.XRP]: "Ripple (XRP)",
-       [AssetType.ADA]: "Cardano (ADA)",
-       [AssetType.DOGE]: "Dogecoin (DOGE)",
-       [AssetType.SP500]: "S&P 500",
-       [AssetType.NASDAQ]: "Nasdaq 100",
-       [AssetType.CSI300]: "CSI 300 (China)",
-       [AssetType.HSI]: "Hang Seng (HK)",
-       [AssetType.NIKKEI]: "Nikkei 225 (JP)",
-       [AssetType.AAPL]: "Apple (AAPL)",
-       [AssetType.MSFT]: "Microsoft (MSFT)",
-       [AssetType.GOOGL]: "Google (GOOGL)",
-       [AssetType.AMZN]: "Amazon (AMZN)",
-       [AssetType.META]: "Meta (META)",
-       [AssetType.NVDA]: "NVIDIA (NVDA)",
-       [AssetType.TSLA]: "Tesla (TSLA)",
-       [AssetType.NFLX]: "Netflix (NFLX)",
-       [AssetType.AMD]: "AMD (AMD)",
-       [AssetType.INTC]: "Intel (INTC)",
-       [AssetType.V]: "Visa (V)",
-       [AssetType.JNJ]: "Johnson & Johnson (JNJ)",
-       [AssetType.PFE]: "Pfizer (PFE)",
-       [AssetType.PG]: "Procter & Gamble (PG)",
-       [AssetType.GOLD]: "Gold",
-       [AssetType.SILVER]: "Silver",
-       [AssetType.OIL]: "Crude Oil",
-    }
-  }
-};
-
-// Color Palette for Assets
-const COLORS = {
-  // Crypto
-  [AssetType.BTC]: '#F7931A',
-  [AssetType.ETH]: '#627EEA',
-  [AssetType.SOL]: '#9945FF',
-  [AssetType.BNB]: '#F3BA2F',
-  [AssetType.XRP]: '#23292F',
-  [AssetType.ADA]: '#0033AD',
-  [AssetType.DOGE]: '#BA9F33',
-  // Indices
-  [AssetType.SP500]: '#10B981',
-  [AssetType.NASDAQ]: '#3B82F6',
-  [AssetType.CSI300]: '#EF4444',
-  [AssetType.HSI]: '#0D9488',
-  [AssetType.NIKKEI]: '#64748B',
-  // Tech Stocks
-  [AssetType.AAPL]: '#555555',
-  [AssetType.MSFT]: '#0078D4',
-  [AssetType.GOOGL]: '#4285F4',
-  [AssetType.AMZN]: '#FF9900',
-  [AssetType.META]: '#0668E1',
-  [AssetType.NVDA]: '#76B900',
-  [AssetType.TSLA]: '#E82127',
-  [AssetType.NFLX]: '#E50914',
-  [AssetType.AMD]: '#ED1C24',
-  [AssetType.INTC]: '#0071C5',
-  [AssetType.V]: '#1A1F71',
-  [AssetType.JNJ]: '#D51920',
-  [AssetType.PFE]: '#0093D0',
-  [AssetType.PG]: '#003DA5',
-  // Commodities
-  [AssetType.GOLD]: '#FFD700',
-  [AssetType.SILVER]: '#C0C0C0',
-  [AssetType.OIL]: '#000000',
-};
-
-const ASSET_GROUPS_CONFIG = [
-  { 
-    key: 'crypto', 
-    assets: [
-      AssetType.BTC, 
-      AssetType.ETH, 
-      AssetType.SOL, 
-      AssetType.BNB, 
-      AssetType.XRP, 
-      AssetType.ADA, 
-      AssetType.DOGE
-    ] 
-  },
-  { 
-    key: 'indices', 
-    assets: [
-      AssetType.SP500, 
-      AssetType.NASDAQ, 
-      AssetType.CSI300, 
-      AssetType.HSI, 
-      AssetType.NIKKEI
-    ] 
-  },
-  { 
-    key: 'tech', 
-    assets: [
-      AssetType.AAPL, 
-      AssetType.MSFT, 
-      AssetType.GOOGL, 
-      AssetType.AMZN, 
-      AssetType.META, 
-      AssetType.NVDA, 
-      AssetType.TSLA, 
-      AssetType.NFLX, 
-      AssetType.AMD, 
-      AssetType.INTC,
-      AssetType.V,
-      AssetType.JNJ,
-      AssetType.PFE,
-      AssetType.PG
-    ] 
-  },
-  { 
-    key: 'commodities', 
-    assets: [
-      AssetType.GOLD, 
-      AssetType.SILVER, 
-      AssetType.OIL
-    ] 
-  },
-];
+const FREE_YEARS_LIMIT = [1, 3, 5];
+const FREE_MAX_ASSETS = 3; // 免费用户最多可选择3个资产
+const API_URL = import.meta.env.VITE_API_URL || 'https://dca-simulator-api.sonic980828.workers.dev';
 
 const App: React.FC = () => {
+  // --- Auth State ---
+  const { isPro, login, user, stats, checkStatus } = useUserStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['crypto', 'indices']);
+
+  // --- Asset Config State (Dynamic) ---
+  const [assetsConfig, setAssetsConfig] = useState<AssetConfig[]>([]);
+  const [isConfigLoading, setIsConfigLoading] = useState<boolean>(true);
+
+  // --- Detect language from domain or URL ---
+  const detectLanguage = (): Language => {
+    const hostname = window.location.hostname.toLowerCase();
+    const pathname = window.location.pathname.toLowerCase();
+    
+    // Check domain
+    if (hostname.includes('zh-hant.') || hostname.includes('tw.')) {
+      return Language.ZH_HANT;
+    }
+    if (hostname.includes('en.') || hostname.includes('english.')) {
+      return Language.EN;
+    }
+    
+    // Check pathname
+    if (pathname.includes('/zh-hant') || pathname.includes('/tw')) {
+      return Language.ZH_HANT;
+    }
+    if (pathname.includes('/en') || pathname.includes('/english')) {
+      return Language.EN;
+    }
+    
+    // Default to Simplified Chinese
+    return Language.ZH_HANS;
+  };
+
   // --- State ---
-  const [language, setLanguage] = useState<Language>(Language.ZH_HANT);
-  const [selectedYears, setSelectedYears] = useState<number>(5);
+  const [language, setLanguage] = useState<Language>(detectLanguage());
+  const [selectedYears, setSelectedYears] = useState<number>(3);
   const [activeAssets, setActiveAssets] = useState<AssetType[]>([
     AssetType.BTC,
     AssetType.SP500,
-    AssetType.NASDAQ,
   ]);
   const [investmentAmount, setInvestmentAmount] = useState<number>(100);
   const [frequency, setFrequency] = useState<Frequency>(Frequency.MONTHLY);
@@ -315,8 +83,127 @@ const App: React.FC = () => {
   const [priceData, setPriceData] = useState<PriceData[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [showFallbackWarning, setShowFallbackWarning] = useState<boolean>(false);
 
   const t = TRANSLATIONS[language];
+
+  // --- Update SEO meta tags when language changes ---
+  useEffect(() => {
+    const updateSEO = () => {
+      const titles: Record<Language, string> = {
+        [Language.ZH_HANS]: '定投复利模拟器 | 比特币、美股、黄金历史回测工具',
+        [Language.ZH_HANT]: '定投復利模擬器 | 比特幣、美股、黃金歷史回測工具',
+        [Language.EN]: 'DCA Simulator | Bitcoin, Stocks, Gold Backtest Tool'
+      };
+      
+      const descriptions: Record<Language, string> = {
+        [Language.ZH_HANS]: '免费的投资定投计算器 (DCA Simulator)。模拟每月定投比特币(BTC)、标普500(S&P500)、纳斯达克(Nasdaq)及黄金的历史收益。即时计算总资产、年化收益率(CAGR)与最大回撤，助您做出更聪明的投资决策。',
+        [Language.ZH_HANT]: '免費的投資定投計算器 (DCA Simulator)。模擬每月定投比特幣(BTC)、標普500(S&P500)、納斯達克(Nasdaq)及黃金的歷史收益。即時計算總資產、年化收益率(CAGR)與最大回撤，助您做出更聰明的投資決策。',
+        [Language.EN]: 'Free DCA Simulator. Backtest monthly investments in Bitcoin (BTC), S&P500, Nasdaq, and Gold. Calculate total value, CAGR, and max drawdown to make smarter investment decisions.'
+      };
+      
+      document.title = titles[language];
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', descriptions[language]);
+      }
+      
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (ogTitle) {
+        ogTitle.setAttribute('content', titles[language]);
+      }
+      
+      const ogDescription = document.querySelector('meta[property="og:description"]');
+      if (ogDescription) {
+        ogDescription.setAttribute('content', descriptions[language]);
+      }
+      
+      document.documentElement.lang = language === Language.ZH_HANS ? 'zh-Hans' : 
+                                      language === Language.ZH_HANT ? 'zh-Hant' : 'en';
+    };
+    
+    updateSEO();
+  }, [language]);
+
+  // --- Load Asset Configuration from API ---
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        setIsConfigLoading(true);
+        console.log('📋 加载资产配置...');
+        const res = await fetch(`${API_URL}/api/assets/config`);
+        if (res.ok) {
+          const config = await res.json();
+          setAssetsConfig(config);
+          console.log('✅ 资产配置加载成功:', config.length, '个资产');
+        } else {
+          console.error('❌ 资产配置加载失败');
+        }
+      } catch (error) {
+        console.error('❌ 资产配置加载异常:', error);
+      } finally {
+        setIsConfigLoading(false);
+      }
+    };
+    loadConfig();
+  }, []);
+
+  // --- Initialize auth ---
+  useEffect(() => {
+    const init = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      await login(ref || undefined);
+    };
+    init();
+  }, []);
+
+  // --- Load user stats after login ---
+  useEffect(() => {
+    if (user && !stats) {
+      checkStatus();
+    }
+  }, [user, stats, checkStatus]);
+
+  // --- Dynamic Configuration (computed from assetsConfig) ---
+  const COLORS = useMemo(() => {
+    const colors: Record<string, string> = {};
+    assetsConfig.forEach(asset => {
+      colors[asset.symbol] = asset.color;
+    });
+    return colors;
+  }, [assetsConfig]);
+
+  const ASSET_GROUPS_CONFIG = useMemo(() => {
+    const groups: Record<string, AssetType[]> = {};
+    assetsConfig.forEach(asset => {
+      if (!groups[asset.group]) {
+        groups[asset.group] = [];
+      }
+      groups[asset.group].push(asset.symbol as AssetType);
+    });
+    
+    // Sort assets within each group by order
+    Object.keys(groups).forEach(groupKey => {
+      groups[groupKey].sort((a, b) => {
+        const configA = assetsConfig.find(c => c.symbol === a);
+        const configB = assetsConfig.find(c => c.symbol === b);
+        return (configA?.order || 0) - (configB?.order || 0);
+      });
+    });
+    
+    // Convert to array format expected by UI
+    return Object.keys(groups).map(key => ({
+      key,
+      assets: groups[key]
+    }));
+  }, [assetsConfig]);
+
+  const FREE_ASSETS = useMemo(() => {
+    return assetsConfig
+      .filter(asset => asset.isFree)
+      .map(asset => asset.symbol as AssetType);
+  }, [assetsConfig]);
 
   // Animation State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -336,6 +223,15 @@ const App: React.FC = () => {
         console.log('🚀 开始加载真实历史数据...');
         const data = await loadHistoricalData();
         setPriceData(data);
+        
+        // Check if using CSV fallback
+        if (isUsingFallback()) {
+          setShowFallbackWarning(true);
+          console.warn('⚠️ 当前使用 CSV 兜底数据');
+        } else {
+          setShowFallbackWarning(false);
+        }
+        
         console.log('✅ 真实历史数据加载成功');
       } catch (error) {
         console.error('❌ 加载数据失败:', error);
@@ -498,10 +394,41 @@ const App: React.FC = () => {
   }, [results, safeIndex]);
 
   const toggleAsset = (asset: AssetType) => {
-    setActiveAssets(prev => 
-      prev.includes(asset) 
-        ? prev.filter(a => a !== asset)
-        : [...prev, asset]
+    if (!isPro) {
+      if (!FREE_ASSETS.includes(asset)) {
+        setIsAuthModalOpen(true);
+        return;
+      }
+      if (activeAssets.includes(asset)) {
+        setActiveAssets(prev => prev.filter(a => a !== asset));
+      } else {
+        // Free user max assets check: 最多选择3个资产
+        if (activeAssets.length >= FREE_MAX_ASSETS) {
+          setIsAuthModalOpen(true);
+          return;
+        }
+        setActiveAssets(prev => [...prev, asset]);
+      }
+    } else {
+      setActiveAssets(prev => 
+        prev.includes(asset) 
+          ? prev.filter(a => a !== asset)
+          : [...prev, asset]
+      );
+    }
+  };
+
+  const handleYearChange = (year: number) => {
+    if (!isPro && !FREE_YEARS_LIMIT.includes(year)) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setSelectedYears(year);
+  };
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   };
 
@@ -558,13 +485,17 @@ const App: React.FC = () => {
   }, [chartData, displayedChartData, selectedYears]);
 
   // 加载中状态
-  if (isLoading) {
+  if (isLoading || isConfigLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
-          <p className="text-gray-600 text-lg">正在加载真实历史数据...</p>
-          <p className="text-gray-400 text-sm mt-2">Loading real historical data from Yahoo Finance</p>
+          <p className="text-gray-600 text-lg">
+            {isConfigLoading ? '正在加载资产配置...' : '正在加载真实历史数据...'}
+          </p>
+          <p className="text-gray-400 text-sm mt-2">
+            {isConfigLoading ? 'Loading asset configuration...' : 'Loading real historical data from Yahoo Finance'}
+          </p>
         </div>
       </div>
     );
@@ -591,6 +522,24 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans flex flex-col overflow-x-hidden">
+      {/* CSV Fallback Warning */}
+      {showFallbackWarning && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3 w-full">
+          <div className="max-w-7xl mx-auto flex items-center gap-2 text-sm text-yellow-800">
+            <Info className="w-4 h-4 flex-shrink-0" />
+            <span>
+              <strong>提示：</strong> 当前使用备用数据源（CSV）。API 连接失败，数据可能不是最新。
+              <button 
+                onClick={() => window.location.reload()} 
+                className="ml-2 underline hover:text-yellow-900"
+              >
+                点击重试
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
@@ -605,6 +554,19 @@ const App: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Pro Button */}
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
+                isPro 
+                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' 
+                  : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white hover:shadow-md'
+              }`}
+            >
+              <Crown className="w-4 h-4 fill-current" />
+              {isPro ? 'Pro Member' : 'Upgrade Pro'}
+            </button>
+
             {/* Language Switcher */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <Globe className="w-4 h-4 text-gray-400 ml-2 mr-1" />
@@ -619,18 +581,15 @@ const App: React.FC = () => {
               </select>
             </div>
 
-            {/* Author Link */}
-            <a 
-              href="https://x.com/sonic_yann" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm"
+            {/* Invite Friends Button */}
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-md hover:from-emerald-600 hover:to-teal-700"
             >
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" className="w-4 h-4">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              <span className="hidden sm:inline">@sonic_yann</span>
-            </a>
+              <Share2 className="w-4 h-4" />
+              <span className="hidden sm:inline">{t.upgrade_pro_modal.invite_title}</span>
+              <span className="sm:hidden">邀请</span>
+            </button>
           </div>
         </div>
       </header>
@@ -693,52 +652,66 @@ const App: React.FC = () => {
                   <Settings className="w-4 h-4" /> {t.timeframe}
                 </label>
                 <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-hidden">
-                  {[1, 3, 5, 10, 15].map(year => (
-                    <button
-                      key={year}
-                      onClick={() => setSelectedYears(year)}
-                      className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap ${
-                        selectedYears === year 
-                          ? 'bg-white text-indigo-600 shadow-sm' 
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      {year}{t.year}
-                    </button>
-                  ))}
+                  {[1, 3, 5, 10, 15].map(year => {
+                    const isLocked = !isPro && !FREE_YEARS_LIMIT.includes(year);
+                    return (
+                      <button
+                        key={year}
+                        onClick={() => handleYearChange(year)}
+                        className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap relative ${
+                          selectedYears === year 
+                            ? 'bg-white text-indigo-600 shadow-sm' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {year}{t.year}
+                        {isLocked && <Lock className="w-3 h-3 absolute top-1 right-1 text-gray-400" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* Asset Selector (Grouped) */}
+            {/* Asset Selector (Grouped & Always Expanded) */}
             <div className="space-y-4">
-              <label className="text-sm font-medium text-gray-600 flex items-center gap-1 border-b pb-2">
+              <div className="flex justify-between items-center border-b pb-2">
+                <label className="text-sm font-medium text-gray-600 flex items-center gap-1">
                   <PieChart className="w-4 h-4" /> {t.assets_label}
                 </label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
                 {ASSET_GROUPS_CONFIG.map((group: any) => (
-                  <div key={group.key} className="space-y-2">
-                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider sticky top-0 bg-white z-10 py-1">
-                      {(t.groups as any)[group.key]}
-                    </h4>
-                    <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
-                      {group.assets.map((asset: AssetType) => (
-                        <button
-                          key={asset}
-                          onClick={() => toggleAsset(asset)}
-                          className={`relative flex items-center justify-between px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
-                            activeAssets.includes(asset)
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
-                              : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[asset] }}></span>
-                            <span className="truncate">{t.assets[asset]}</span>
-                          </div>
-                          {activeAssets.includes(asset) && <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
-                        </button>
-                      ))}
+                  <div key={group.key} className="border border-gray-100 rounded-lg overflow-hidden bg-gray-50/50">
+                    <div className="w-full flex items-center justify-between p-3 bg-white border-b border-gray-100">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        {(t.groups && (t.groups as any)[group.key]) || group.key}
+                      </h4>
+                    </div>
+                    
+                    <div className="p-2 flex flex-col gap-1 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200">
+                      {group.assets.map((asset: AssetType) => {
+                        const isLocked = !isPro && !FREE_ASSETS.includes(asset);
+                        return (
+                          <button
+                            key={asset}
+                            onClick={() => toggleAsset(asset)}
+                            className={`relative flex items-center justify-between px-3 py-2 rounded-md border text-xs font-medium transition-all ${
+                              activeAssets.includes(asset)
+                                ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm'
+                                : 'border-transparent hover:bg-white hover:border-gray-200 text-gray-600'
+                            } ${isLocked ? 'opacity-60 grayscale' : ''}`}
+                          >
+                            <div className="flex items-center gap-2 truncate pr-6 w-full">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[asset] }}></span>
+                              <span className="truncate text-left flex-1">{t.assets[asset]}</span>
+                            </div>
+                            {activeAssets.includes(asset) && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0 absolute right-2" />}
+                            {isLocked && <Lock className="w-3 h-3 text-gray-400 absolute right-2" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -949,8 +922,135 @@ const App: React.FC = () => {
              <span>{t.source}</span>
           </div>
 
+          {/* Invite Friends Section */}
+          <section className="mt-12 mb-12">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-bold text-gray-900">{t.upgrade_pro_modal.invite_title}</h2>
+            </div>
+            
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-indigo-200"></div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Share2 className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-xl font-bold text-gray-800">{t.upgrade_pro_modal.invite_title}</h3>
+                </div>
+                <p className="text-sm text-gray-600 mb-6">
+                  {t.upgrade_pro_modal.invite_desc}
+                </p>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-indigo-600 mb-1">1人</div>
+                    <div className="text-sm text-gray-600">获得1天会员</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-indigo-600 mb-1">2人</div>
+                    <div className="text-sm text-gray-600">累计2天会员</div>
+                  </div>
+                  <div className="text-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+                    <div className="text-2xl font-bold text-indigo-600 mb-1 flex items-center justify-center gap-1">
+                      3人 <Crown className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    </div>
+                    <div className="text-sm font-semibold text-indigo-700">升级永久会员！</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="w-full py-3 px-4 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  {t.upgrade_pro_modal.generate_link}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* Pricing & Features Section */}
+          <section className="mt-12 mb-12">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl font-bold text-gray-900">{t.features_title}</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              {/* Free Plan */}
+              <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gray-200"></div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">{t.free_plan}</h3>
+                <div className="text-3xl font-bold text-gray-900 mb-6">{t.price_free} <span className="text-sm font-normal text-gray-500">{t.price_free_period}</span></div>
+                <ul className="space-y-4 mb-8">
+                  {(t.free_features as string[]).map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                      <CheckCircle2 className="w-5 h-5 text-gray-400 shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="w-full py-3 px-4 rounded-lg bg-gray-100 text-gray-500 text-center font-medium cursor-default">
+                  {t.activation_status}: {isPro ? t.status_inactive : t.status_active}
+                </div>
+              </div>
+
+              {/* Pro Plan */}
+              <div className="bg-white rounded-2xl p-8 border-2 border-indigo-600 shadow-xl relative overflow-hidden transform md:-translate-y-2">
+                <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
+                  Recommended
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2">
+                  {t.pro_plan} <Crown className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                </h3>
+                <div className="text-3xl font-bold text-gray-900 mb-6">{t.price_pro} <span className="text-sm font-normal text-gray-500">{t.price_pro_period}</span></div>
+                <ul className="space-y-4 mb-8">
+                  {(t.pro_features as string[]).map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-3 text-sm text-gray-700">
+                      <CheckCircle2 className="w-5 h-5 text-indigo-600 shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                {isPro ? (
+                  <div className="w-full py-3 px-4 rounded-lg bg-green-100 text-green-700 border border-green-200 text-center font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-5 h-5" /> {t.status_active}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="w-full py-3 px-4 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg hover:shadow-indigo-200"
+                  >
+                    {t.upgrade_pro}
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="mt-16 py-8 border-t border-gray-200 text-center text-sm text-gray-500">
+            <div className="flex justify-center items-center gap-6 mb-4 flex-wrap">
+              <a href="#" className="hover:text-gray-900">Privacy Policy</a>
+              <a href="#" className="hover:text-gray-900">Terms of Service</a>
+              <a href="#" className="hover:text-gray-900">Contact Support</a>
+              <a 
+                href="https://x.com/sonic_yann" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-gray-900"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                <span>@sonic_yann</span>
+              </a>
+            </div>
+            <p>© {new Date().getFullYear()} DCA Simulator. All rights reserved.</p>
+            <p className="mt-2 text-xs text-gray-400">
+              Disclaimer: This tool is for informational purposes only and does not constitute financial advice. 
+              Past performance is not indicative of future results.
+            </p>
+          </footer>
+
         </main>
       </div>
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} language={language} />
     </div>
   );
 };

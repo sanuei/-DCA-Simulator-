@@ -1,0 +1,35 @@
+name = "dca-simulator-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+routes = [
+  { pattern = "dca.soniclab.cc/*", zone_name = "soniclab.cc" }
+]
+
+[[kv_namespaces]]
+binding = "DCA_USERS"
+id = "9ad5213e8f2c4203b0386cbf8f269271" # User provided ID
+
+[[kv_namespaces]]
+binding = "DCA_CODES"
+id = "9ad5213e8f2c4203b0386cbf8f269271" # User provided ID
+
+[[kv_namespaces]]
+binding = "DCA_SESSIONS"
+id = "9ad5213e8f2c4203b0386cbf8f269271" # User provided ID (corrected from 'r9ad...')
+
+[[kv_namespaces]]
+binding = "DCA_REFERRALS"
+id = "9ad5213e8f2c4203b0386cbf8f269271" # User provided ID
+
+[[kv_namespaces]]
+binding = "DCA_DATA"
+id = "9ad5213e8f2c4203b0386cbf8f269271" # User provided ID (Shared for simplicity)
+
+[triggers]
+crons = ["0 0 1 * *"] # Monthly trigger (1st day of month at 00:00 UTC)
+
+[vars]
+ADMIN_PASSWORD = "sonic666" # User provided password
+JWT_SECRET = "Pt9y8yi0Ez+SHbDUfvvOK1DKylwErhD6UFo76Xmmnas=" # Generated secret

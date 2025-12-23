@@ -8,7 +8,7 @@
 
 一个基于真实历史数据的定投策略回测工具，支持比特币、以太坊、美股指数、科技巨头股票等多种资产的投资模拟。
 
-[在线演示](https://sanuei.github.io/-DCA-Simulator-/) 
+[在线演示](https://www.soniclab.cc/dca-simulator/) | [GitHub Pages](https://sanuei.github.io/-DCA-Simulator-/)
 
 </div>
 
@@ -32,7 +32,8 @@
 ### 🌐 真实历史数据
 - 使用 **Yahoo Finance** 真实历史价格数据
 - 覆盖 **15年**历史数据（部分资产从2010年开始）
-- 每日自动更新，确保数据时效性
+- 数据存储在 Cloudflare KV，每月自动更新
+- 本地CSV作为应急兜底数据源
 
 ### 📈 支持资产类别
 - **加密货币** (7种)：比特币(BTC)、以太坊(ETH)、Solana(SOL)、币安币(BNB)、瑞波币(XRP)、艾达币(ADA)、狗狗币(DOGE)
@@ -106,7 +107,7 @@ python3 scripts/download_data.py
 npm run dev
 ```
 
-访问 `http://localhost:5173` 即可查看应用。
+访问 `http://localhost:3000` 即可查看应用（端口在 `vite.config.ts` 中配置为3000）。
 
 ### 构建生产版本
 
@@ -122,13 +123,32 @@ npm run preview
 ```
 -DCA-Simulator-/
 ├── scripts/
-│   └── download_data.py      # 数据下载脚本
+│   ├── download_data.py       # 数据下载脚本（从Yahoo Finance）
+│   └── upload_csv_to_kv.cjs   # CSV数据上传到Cloudflare KV脚本
+├── worker/                    # Cloudflare Worker后端
+│   ├── src/
+│   │   ├── index.ts          # Worker主入口
+│   │   ├── middleware.ts     # 中间件
+│   │   └── utils.ts          # 工具函数
+│   └── wrangler.toml         # Worker配置
+├── src/                       # 前端源代码
+│   ├── components/
+│   │   └── AuthModal.tsx     # 认证模态框
+│   ├── services/
+│   │   └── api.ts            # API服务
+│   ├── store/
+│   │   └── userStore.ts      # 用户状态管理
+│   └── utils/
+│       └── translations.ts   # 多语言翻译
 ├── utils/
 │   ├── dataLoader.ts          # CSV 数据加载工具
-│   ├── finance.ts             # DCA 计算逻辑
-│   └── mockData.ts            # 模拟数据生成器（已弃用）
+│   └── finance.ts             # DCA 计算逻辑
 ├── public/
-│   └── data/                  # 历史价格数据（CSV 格式）
+│   ├── data/                  # 历史价格数据（CSV 格式，作为兜底）
+│   ├── admin.html             # 后台管理页面
+│   ├── robots.txt             # SEO配置
+│   └── sitemap.xml            # 站点地图
+├── archive/                   # 归档文档
 ├── App.tsx                    # 主应用组件
 ├── types.ts                   # TypeScript 类型定义
 └── index.html                 # HTML 入口文件
@@ -191,11 +211,21 @@ npm run preview
 
 ### 更新数据
 
-数据会随时间变化，建议定期更新：
+数据会随时间变化，建议定期更新。详细的数据更新指南请参考 [DATA_UPDATE.md](DATA_UPDATE.md)。
 
-```bash
-python3 scripts/download_data.py
-```
+**快速更新方式：**
+
+1. **使用上传脚本（推荐）**
+   ```bash
+   python3 scripts/download_data.py          # 下载最新数据
+   node scripts/upload_csv_to_kv.cjs         # 上传到Cloudflare KV
+   ```
+
+2. **通过后台管理页面**
+   访问 `https://www.soniclab.cc/dca-simulator/admin.html`，在"数据管理"标签页更新数据。
+
+3. **自动化更新**
+   系统已配置每月1号自动更新（通过Cloudflare Worker Cron）。
 
 ---
 
@@ -206,6 +236,36 @@ python3 scripts/download_data.py
 3. **查看结果**：页面会自动计算并展示投资表现
 4. **播放动画**：点击"播放动画"按钮查看投资过程演示
 5. **导出数据**：可通过浏览器开发者工具导出图表数据
+
+---
+
+## 🚀 部署说明
+
+本项目使用 **Cloudflare Pages** 部署前端，**Cloudflare Workers** 提供后端API服务。
+
+详细的部署步骤请参考 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
+**快速部署：**
+
+```bash
+# 部署前端
+npm run build
+npm run deploy
+
+# 部署Worker
+cd worker
+npx wrangler deploy
+```
+
+---
+
+## 🔧 维护说明
+
+项目维护相关信息请参考：
+
+- **[MAINTENANCE.md](MAINTENANCE.md)** - 监控和故障排查
+- **[DATA_UPDATE.md](DATA_UPDATE.md)** - 数据更新详细指南
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - 部署操作手册
 
 ---
 

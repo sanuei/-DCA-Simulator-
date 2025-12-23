@@ -67,3 +67,14 @@ export interface SimulationResult {
     invested: number;
   }[];
 }
+
+export interface AssetConfig {
+  symbol: string; // Internal key (e.g. BTC)
+  yahooSymbol: string; // Yahoo ticker (e.g. BTC-USD)
+  name: string;
+  type: 'crypto' | 'index' | 'stock' | 'commodity';
+  color: string; // Hex color code (e.g. #F7931A)
+  group: string; // Group key (e.g. 'crypto', 'indices', 'tech', 'commodities')
+  isFree: boolean; // Whether this asset is available to free users
+  order: number; // Display order within the group
+}
