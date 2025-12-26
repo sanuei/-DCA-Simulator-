@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUserStore } from '../store/userStore';
 import { api } from '../services/api';
-import { X, Check, Copy, Loader2, Crown, Share2, CreditCard, ShoppingBag } from 'lucide-react';
+import { X, Check, Copy, Loader2, Crown, Share2, CreditCard } from 'lucide-react';
 import { TRANSLATIONS } from '../utils/translations';
 import { Language } from '../../types';
 
@@ -17,6 +17,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [refCode, setRefCode] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<'gumroad' | 'wechat'>('gumroad');
 
   // 当模态框打开时，确保加载用户统计信息
   React.useEffect(() => {
@@ -90,25 +91,99 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language 
 
           {/* Payment Options */}
           {!isPro && (
-            <div className="mb-8 grid grid-cols-1 gap-3">
-              <a 
-                href="https://sonicwave130.gumroad.com/l/vyfnpv" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
-              >
-                <CreditCard size={18} />
-                {t.buy_gumroad}
-              </a>
-              <a 
-                href="https://m.tb.cn/h.7VIucp7?tk=oknrfwFvV1s" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-[#FFDA00] text-[#333] rounded-lg hover:bg-[#FFED4D] transition-colors font-medium"
-              >
-                <ShoppingBag size={18} />
-                {t.buy_xianyu}
-              </a>
+            <div className="mb-8">
+              <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">付款方式</span>
+                  <span className="text-[11px] text-gray-400">可切换</span>
+                </div>
+
+                <div className="flex rounded-xl bg-white border border-gray-200 p-1 mb-4">
+                  <label className="flex-1 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="payMethod" 
+                      value="gumroad" 
+                      checked={payMethod === 'gumroad'}
+                      onChange={() => setPayMethod('gumroad')}
+                      className="sr-only peer"
+                    />
+                    <div className="py-2 px-3 text-center text-sm text-gray-500 peer-checked:bg-gray-900 peer-checked:text-white peer-checked:shadow-sm rounded-lg transition-all font-bold">
+                      Gumroad
+                    </div>
+                  </label>
+                  <label className="flex-1 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="payMethod" 
+                      value="wechat" 
+                      checked={payMethod === 'wechat'}
+                      onChange={() => setPayMethod('wechat')}
+                      className="sr-only peer"
+                    />
+                    <div className="py-2 px-3 text-center text-sm text-gray-500 peer-checked:bg-gray-900 peer-checked:text-white peer-checked:shadow-sm rounded-lg transition-all font-bold">
+                      微信转账
+                    </div>
+                  </label>
+                </div>
+
+                {/* Gumroad 面板 */}
+                {payMethod === 'gumroad' && (
+                  <div className="space-y-3">
+                    <a 
+                      href="https://sonicwave130.gumroad.com/l/vyfnpv" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-bold text-sm transition-all"
+                    >
+                      <CreditCard size={18} />
+                      {t.buy_gumroad}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5h7m0 0v7m0-7L10 19l-5-5"/>
+                      </svg>
+                    </a>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      支付完成后，您将收到激活码邮件。
+                    </p>
+                    <div className="flex items-center justify-center gap-3 text-xs">
+                      <a href="https://x.com/sonic_yann" target="_blank" className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        X: @sonic_yann
+                      </a>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-gray-600">微信: sonic_yann</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 微信面板 */}
+                {payMethod === 'wechat' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-center">
+                      <img 
+                        src="/IMG_5188.JPG" 
+                        alt="微信收款码" 
+                        className="max-w-full max-h-96 w-auto h-auto rounded-xl border-2 border-white shadow-lg object-contain bg-white p-2"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed text-center">
+                      扫码支付后请联系我获取激活码（备注：激活码）
+                    </p>
+                    <div className="flex items-center justify-center gap-3 text-xs">
+                      <a href="https://x.com/sonic_yann" target="_blank" className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        X: @sonic_yann
+                      </a>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-gray-600">微信: sonic_yann</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -187,8 +262,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language 
             ) : (
               <button 
                 onClick={handleCreateReferral}
-                className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-500 hover:text-blue-500 transition-colors"
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
               >
+                <Share2 size={18} />
                 {t.generate_link}
               </button>
             )}

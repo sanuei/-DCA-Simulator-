@@ -1026,9 +1026,10 @@ const App: React.FC = () => {
           {/* Footer */}
           <footer className="mt-16 py-8 border-t border-gray-200 text-center text-sm text-gray-500">
             <div className="flex justify-center items-center gap-6 mb-4 flex-wrap">
-              <a href="#" className="hover:text-gray-900">Privacy Policy</a>
-              <a href="#" className="hover:text-gray-900">Terms of Service</a>
-              <a href="#" className="hover:text-gray-900">Contact Support</a>
+              <a href="/dca-simulator/privacy-policy.html" className="hover:text-gray-900">Privacy Policy</a>
+              <a href="/dca-simulator/terms-of-service.html" className="hover:text-gray-900">Terms of Service</a>
+              <a href="/dca-simulator/refund-policy.html" className="hover:text-gray-900">Refund Policy</a>
+              <a href="/dca-simulator/contact.html" className="hover:text-gray-900">Contact</a>
               <a 
                 href="https://x.com/sonic_yann" 
                 target="_blank" 

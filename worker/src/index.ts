@@ -479,6 +479,23 @@ app.post('/api/referral/create', userAuth, async (c) => {
   return jsonResponse(c, { referralCode: refCode });
 });
 
+// #region agent log
+// Add root path handler for health check
+app.get('/', async (c) => {
+  fetch('http://127.0.0.1:7245/ingest/b0325a71-d6a6-49b4-aae8-cccb2a6eb4b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/src/index.ts:501',message:'Root path accessed',data:{path:c.req.path,method:c.req.method},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  return c.json({ 
+    service: 'DCA Simulator API',
+    version: '1.0.0',
+    status: 'online',
+    endpoints: {
+      config: '/api/assets/config',
+      data: '/api/assets/data',
+      login: '/api/auth/login'
+    }
+  });
+});
+// #endregion
+
 export default {
   fetch: app.fetch,
   async scheduled(event: any, env: Bindings, ctx: ExecutionContext) {
