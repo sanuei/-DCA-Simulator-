@@ -3,9 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2024-01-01"
 workers_dev = true
 
-routes = [
-  { pattern = "dca.soniclab.cc/*", zone_name = "soniclab.cc" }
-]
+
 
 [[kv_namespaces]]
 binding = "DCA_USERS"
