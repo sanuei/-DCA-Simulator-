@@ -1,5 +1,5 @@
 {
-  "name": "crypto-&-market-dca-simulator",
+  "name": "crypto-market-dca-simulator",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && npx wrangler pages deploy dist/dca-simulator --project-name dca-simulator"
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",

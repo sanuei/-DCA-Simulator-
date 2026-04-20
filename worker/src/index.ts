@@ -21,14 +21,14 @@ const DEFAULT_ASSETS: AssetConfig[] = [
   { symbol: 'XRP', yahooSymbol: 'XRP-USD', name: '瑞波幣 (XRP)', type: 'crypto', color: '#23292F', group: 'crypto', isFree: false, order: 5 },
   { symbol: 'ADA', yahooSymbol: 'ADA-USD', name: '艾達幣 (ADA)', type: 'crypto', color: '#0033AD', group: 'crypto', isFree: false, order: 6 },
   { symbol: 'DOGE', yahooSymbol: 'DOGE-USD', name: '狗狗幣 (DOGE)', type: 'crypto', color: '#C2A633', group: 'crypto', isFree: false, order: 7 },
-  
+
   // Indices
   { symbol: 'SP500', yahooSymbol: '^GSPC', name: '標普500 (S&P500)', type: 'index', color: '#10B981', group: 'indices', isFree: true, order: 1 },
   { symbol: 'NASDAQ', yahooSymbol: '^IXIC', name: '納斯達克 (Nasdaq)', type: 'index', color: '#0EA5E9', group: 'indices', isFree: true, order: 2 },
   { symbol: 'CSI300', yahooSymbol: '000300.SS', name: '滬深300 (China)', type: 'index', color: '#EF4444', group: 'indices', isFree: false, order: 3 },
   { symbol: 'HSI', yahooSymbol: '^HSI', name: '恆生指數 (HK)', type: 'index', color: '#8B5CF6', group: 'indices', isFree: false, order: 4 },
   { symbol: 'NIKKEI', yahooSymbol: '^N225', name: '日經225 (Japan)', type: 'index', color: '#64748B', group: 'indices', isFree: false, order: 5 },
-  
+
   // Tech Stocks
   { symbol: 'AAPL', yahooSymbol: 'AAPL', name: '蘋果 (AAPL)', type: 'stock', color: '#A3AAAE', group: 'tech', isFree: true, order: 1 },
   { symbol: 'MSFT', yahooSymbol: 'MSFT', name: '微軟 (MSFT)', type: 'stock', color: '#F25022', group: 'tech', isFree: false, order: 2 },
@@ -44,7 +44,7 @@ const DEFAULT_ASSETS: AssetConfig[] = [
   { symbol: 'JNJ', yahooSymbol: 'JNJ', name: '強生 (JNJ)', type: 'stock', color: '#D51920', group: 'tech', isFree: false, order: 12 },
   { symbol: 'PFE', yahooSymbol: 'PFE', name: '輝瑞 (PFE)', type: 'stock', color: '#0093D0', group: 'tech', isFree: false, order: 13 },
   { symbol: 'PG', yahooSymbol: 'PG', name: '寶潔 (PG)', type: 'stock', color: '#003DA5', group: 'tech', isFree: false, order: 14 },
-  
+
   // Commodities
   { symbol: 'GOLD', yahooSymbol: 'GC=F', name: '黃金 (Gold)', type: 'commodity', color: '#FFD700', group: 'commodities', isFree: true, order: 1 },
   { symbol: 'SILVER', yahooSymbol: 'SI=F', name: '白銀 (Silver)', type: 'commodity', color: '#C0C0C0', group: 'commodities', isFree: false, order: 2 },
@@ -61,54 +61,54 @@ async function fetchYahooData(symbol: string, range: string = '1mo', interval: s
 
 // --- Data Management Helper ---
 async function updateAssetData(env: Bindings, assets: AssetConfig[], range: string = '1mo') {
-    // 1. Fetch current data from KV
-    let currentData: any[] = [];
+  // 1. Fetch current data from KV
+  let currentData: any[] = [];
+  try {
+    const raw = await env.DCA_DATA.get('historical_data');
+    if (raw) currentData = JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to parse existing data', e);
+  }
+
+  // Map by date for easy merging: { "2023-01-01": { date: "2023-01-01", BTC: 100, ... } }
+  const dataMap: Record<string, any> = {};
+  currentData.forEach(row => {
+    if (row.date) dataMap[row.date] = row;
+  });
+
+  // 2. Fetch new data for each asset
+  for (const asset of assets) {
     try {
-        const raw = await env.DCA_DATA.get('historical_data');
-        if (raw) currentData = JSON.parse(raw);
+      const yData: any = await fetchYahooData(asset.yahooSymbol, range);
+      const result = yData.chart.result[0];
+      const timestamps = result.timestamp;
+      const quote = result.indicators.quote[0];
+      const closes = quote.close;
+
+      if (timestamps && closes) {
+        timestamps.forEach((ts: number, i: number) => {
+          if (closes[i] === null || closes[i] === undefined) return;
+
+          const date = new Date(ts * 1000).toISOString().split('T')[0];
+          if (!dataMap[date]) {
+            dataMap[date] = { date };
+          }
+          dataMap[date][asset.symbol] = parseFloat(closes[i].toFixed(2));
+        });
+      }
     } catch (e) {
-        console.error('Failed to parse existing data', e);
+      console.error(`Error updating ${asset.symbol}:`, e);
     }
+  }
 
-    // Map by date for easy merging: { "2023-01-01": { date: "2023-01-01", BTC: 100, ... } }
-    const dataMap: Record<string, any> = {};
-    currentData.forEach(row => {
-        if (row.date) dataMap[row.date] = row;
-    });
+  // 3. Convert back to array and sort
+  const mergedData = Object.values(dataMap).sort((a: any, b: any) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 
-    // 2. Fetch new data for each asset
-    for (const asset of assets) {
-        try {
-            const yData: any = await fetchYahooData(asset.yahooSymbol, range);
-            const result = yData.chart.result[0];
-            const timestamps = result.timestamp;
-            const quote = result.indicators.quote[0];
-            const closes = quote.close;
-
-            if (timestamps && closes) {
-                timestamps.forEach((ts: number, i: number) => {
-                    if (closes[i] === null || closes[i] === undefined) return;
-                    
-                    const date = new Date(ts * 1000).toISOString().split('T')[0];
-                    if (!dataMap[date]) {
-                        dataMap[date] = { date };
-                    }
-                    dataMap[date][asset.symbol] = parseFloat(closes[i].toFixed(2));
-                });
-            }
-        } catch (e) {
-            console.error(`Error updating ${asset.symbol}:`, e);
-        }
-    }
-
-    // 3. Convert back to array and sort
-    const mergedData = Object.values(dataMap).sort((a: any, b: any) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    // 4. Save to KV
-    await env.DCA_DATA.put('historical_data', JSON.stringify(mergedData));
-    return mergedData.length;
+  // 4. Save to KV
+  await env.DCA_DATA.put('historical_data', JSON.stringify(mergedData));
+  return mergedData.length;
 }
 
 
@@ -116,54 +116,54 @@ async function updateAssetData(env: Bindings, assets: AssetConfig[], range: stri
 
 // Get Asset Config
 app.get('/api/admin/assets/config', adminAuth, async (c) => {
-    const raw = await c.env.DCA_DATA.get('assets_config');
-    const config: AssetConfig[] = raw ? JSON.parse(raw) : [];
-    return jsonResponse(c, { config });
+  const raw = await c.env.DCA_DATA.get('assets_config');
+  const config: AssetConfig[] = raw ? JSON.parse(raw) : [];
+  return jsonResponse(c, { config });
 });
 
 // Save Asset Config
 app.post('/api/admin/assets/config', adminAuth, async (c) => {
-    const { config } = await c.req.json<{ config: AssetConfig[] }>();
-    await c.env.DCA_DATA.put('assets_config', JSON.stringify(config));
-    return jsonResponse(c, { success: true });
+  const { config } = await c.req.json<{ config: AssetConfig[] }>();
+  await c.env.DCA_DATA.put('assets_config', JSON.stringify(config));
+  return jsonResponse(c, { success: true });
 });
 
 // Trigger Manual Update
 app.post('/api/admin/assets/update-data', adminAuth, async (c) => {
-    const { range } = await c.req.json<{ range?: string }>();
-    
-    const rawConfig = await c.env.DCA_DATA.get('assets_config');
-    if (!rawConfig) return errorResponse(c, 'No asset config found', 400);
-    
-    const config: AssetConfig[] = JSON.parse(rawConfig);
-    
-    // Default range is 1mo if updating, but for initial load user might want '10y' or 'max'
-    const updateRange = range || '1mo'; 
+  const { range } = await c.req.json<{ range?: string }>();
 
-    const count = await updateAssetData(c.env, config, updateRange);
-    
-    return jsonResponse(c, { success: true, count, message: `Updated data for ${config.length} assets over ${updateRange}` });
+  const rawConfig = await c.env.DCA_DATA.get('assets_config');
+  if (!rawConfig) return errorResponse(c, 'No asset config found', 400);
+
+  const config: AssetConfig[] = JSON.parse(rawConfig);
+
+  // Default range is 1mo if updating, but for initial load user might want '10y' or 'max'
+  const updateRange = range || '1mo';
+
+  const count = await updateAssetData(c.env, config, updateRange);
+
+  return jsonResponse(c, { success: true, count, message: `Updated data for ${config.length} assets over ${updateRange}` });
 });
 
 // Upload historical data directly (for CSV import)
 app.post('/api/admin/assets/upload-data', adminAuth, async (c) => {
-    try {
-        const { data } = await c.req.json<{ data: any[] }>();
-        
-        if (!Array.isArray(data)) {
-            return errorResponse(c, 'Data must be an array', 400);
-        }
-        
-        await c.env.DCA_DATA.put('historical_data', JSON.stringify(data));
-        
-        return jsonResponse(c, { 
-            success: true, 
-            count: data.length, 
-            message: `Uploaded ${data.length} data records to KV` 
-        });
-    } catch (e: any) {
-        return errorResponse(c, e.message || 'Upload failed', 500);
+  try {
+    const { data } = await c.req.json<{ data: any[] }>();
+
+    if (!Array.isArray(data)) {
+      return errorResponse(c, 'Data must be an array', 400);
     }
+
+    await c.env.DCA_DATA.put('historical_data', JSON.stringify(data));
+
+    return jsonResponse(c, {
+      success: true,
+      count: data.length,
+      message: `Uploaded ${data.length} data records to KV`
+    });
+  } catch (e: any) {
+    return errorResponse(c, e.message || 'Upload failed', 500);
+  }
 });
 
 
@@ -171,66 +171,66 @@ app.post('/api/admin/assets/upload-data', adminAuth, async (c) => {
 
 // Get Asset Configuration (Public - for frontend)
 app.get('/api/assets/config', async (c) => {
-    let config = await c.env.DCA_DATA.get('assets_config');
-    
-    // Parse and validate config
-    let parsedConfig: AssetConfig[] = [];
-    
-    if (config) {
-        try {
-            parsedConfig = JSON.parse(config);
-        } catch (e) {
-            console.error('Failed to parse config, reinitializing...');
-        }
+  let config = await c.env.DCA_DATA.get('assets_config');
+
+  // Parse and validate config
+  let parsedConfig: AssetConfig[] = [];
+
+  if (config) {
+    try {
+      parsedConfig = JSON.parse(config);
+    } catch (e) {
+      console.error('Failed to parse config, reinitializing...');
     }
-    
-    // Initialize with default config if not found OR empty
-    if (!parsedConfig || parsedConfig.length === 0) {
-        console.log('No asset config found or empty, initializing with defaults...');
-        await c.env.DCA_DATA.put('assets_config', JSON.stringify(DEFAULT_ASSETS));
-        parsedConfig = DEFAULT_ASSETS;
-    } else {
-        // Ensure AAPL, NVDA, TSLA are free (update if needed)
-        let needsUpdate = false;
-        const freeTechStocks = ['AAPL', 'NVDA', 'TSLA'];
-        
-        parsedConfig = parsedConfig.map(asset => {
-            if (freeTechStocks.includes(asset.symbol) && !asset.isFree) {
-                needsUpdate = true;
-                return { ...asset, isFree: true };
-            }
-            return asset;
-        });
-        
-        // Also ensure these stocks exist in config (in case they were removed)
-        const existingSymbols = parsedConfig.map(a => a.symbol);
-        freeTechStocks.forEach(symbol => {
-            if (!existingSymbols.includes(symbol)) {
-                const defaultAsset = DEFAULT_ASSETS.find(a => a.symbol === symbol);
-                if (defaultAsset) {
-                    parsedConfig.push({ ...defaultAsset, isFree: true });
-                    needsUpdate = true;
-                }
-            }
-        });
-        
-        if (needsUpdate) {
-            console.log('Updating free tech stocks configuration...');
-            await c.env.DCA_DATA.put('assets_config', JSON.stringify(parsedConfig));
+  }
+
+  // Initialize with default config if not found OR empty
+  if (!parsedConfig || parsedConfig.length === 0) {
+    console.log('No asset config found or empty, initializing with defaults...');
+    await c.env.DCA_DATA.put('assets_config', JSON.stringify(DEFAULT_ASSETS));
+    parsedConfig = DEFAULT_ASSETS;
+  } else {
+    // Ensure AAPL, NVDA, TSLA are free (update if needed)
+    let needsUpdate = false;
+    const freeTechStocks = ['AAPL', 'NVDA', 'TSLA'];
+
+    parsedConfig = parsedConfig.map(asset => {
+      if (freeTechStocks.includes(asset.symbol) && !asset.isFree) {
+        needsUpdate = true;
+        return { ...asset, isFree: true };
+      }
+      return asset;
+    });
+
+    // Also ensure these stocks exist in config (in case they were removed)
+    const existingSymbols = parsedConfig.map(a => a.symbol);
+    freeTechStocks.forEach(symbol => {
+      if (!existingSymbols.includes(symbol)) {
+        const defaultAsset = DEFAULT_ASSETS.find(a => a.symbol === symbol);
+        if (defaultAsset) {
+          parsedConfig.push({ ...defaultAsset, isFree: true });
+          needsUpdate = true;
         }
+      }
+    });
+
+    if (needsUpdate) {
+      console.log('Updating free tech stocks configuration...');
+      await c.env.DCA_DATA.put('assets_config', JSON.stringify(parsedConfig));
     }
-    
-    return c.json(parsedConfig);
+  }
+
+  return c.json(parsedConfig);
 });
 
 app.get('/api/assets/data', async (c) => {
-    // Try KV first
-    const data = await c.env.DCA_DATA.get('historical_data');
-    if (data) {
-        // Return as stream or json? JSON is fine for < 25MB
-        return c.json(JSON.parse(data));
-    }
-    return c.json([]);
+  // Try KV first
+  const data = await c.env.DCA_DATA.get('historical_data');
+  if (data) {
+    // Return as stream or json? JSON is fine for < 25MB
+    return c.json(JSON.parse(data));
+  }
+  return c.json([]);
 });
 
 
@@ -285,7 +285,7 @@ app.get('/api/finance/history/:symbol', userAuth, async (c) => {
 // Generate Activation Codes
 app.post('/api/code/generate', adminAuth, async (c) => {
   const { type, durationDays, count } = await c.req.json<{ type: string, durationDays: number, count?: number }>();
-  
+
   const qty = count || 1;
   const codes: string[] = [];
   const now = Date.now();
@@ -299,10 +299,10 @@ app.post('/api/code/generate', adminAuth, async (c) => {
       durationDays: durationDays || 30,
       createdAt: now,
     };
-    
+
     const existing = await c.env.DCA_CODES.get(codeStr);
     if (existing) {
-      i--; 
+      i--;
       continue;
     }
 
@@ -329,7 +329,7 @@ app.get('/api/admin/users', adminAuth, async (c) => {
   const cursor = c.req.query('cursor');
   const limit = 20;
   const list = await c.env.DCA_USERS.list({ prefix: 'user:', limit, cursor });
-  
+
   const users: User[] = [];
   for (const key of list.keys) {
     if (key.name.endsWith(':stats') || key.name.endsWith(':refCode')) continue;
@@ -337,7 +337,7 @@ app.get('/api/admin/users', adminAuth, async (c) => {
     if (u) users.push(u);
   }
 
-  return jsonResponse(c, { users, cursor: list.cursor, list_complete: list.list_complete });
+  return jsonResponse(c, { users, cursor: (list as any).cursor, list_complete: list.list_complete });
 });
 
 // Admin - List Codes
@@ -345,20 +345,20 @@ app.get('/api/admin/codes', adminAuth, async (c) => {
   const cursor = c.req.query('cursor');
   const limit = 20;
   const list = await c.env.DCA_CODES.list({ prefix: 'code:', limit, cursor });
-  
+
   const codes: ActivationCode[] = [];
   for (const key of list.keys) {
     const code = await c.env.DCA_CODES.get<ActivationCode>(key.name, 'json');
     if (code) codes.push(code);
   }
 
-  return jsonResponse(c, { codes, cursor: list.cursor, list_complete: list.list_complete });
+  return jsonResponse(c, { codes, cursor: (list as any).cursor, list_complete: list.list_complete });
 });
 
 // Login
 app.post('/api/auth/login', async (c) => {
   const { deviceId, referralCode } = await c.req.json<{ deviceId?: string, referralCode?: string }>();
-  
+
   if (!deviceId) return errorResponse(c, 'Device ID required', 400);
 
   let user = await c.env.DCA_USERS.get<User>(`user:${deviceId}`, 'json');
@@ -380,7 +380,7 @@ app.post('/api/auth/login', async (c) => {
         const referrerStatsKey = `user:${referrerId}:stats`;
         const stats = await c.env.DCA_USERS.get<UserStats>(referrerStatsKey, 'json') || { inviteCount: 0, rewardDays: 0 };
         stats.inviteCount += 1;
-        
+
         // 获取邀请人的用户信息
         const referrer = await c.env.DCA_USERS.get<User>(`user:${referrerId}`, 'json');
         if (referrer) {
@@ -393,14 +393,14 @@ app.post('/api/auth/login', async (c) => {
             const oneDayMs = 24 * 60 * 60 * 1000;
             const currentExpiry = (referrer.tier === 'pro' && referrer.expireAt) ? referrer.expireAt : Date.now();
             const baseTime = (currentExpiry > Date.now()) ? currentExpiry : Date.now();
-            
+
             referrer.tier = 'pro';
             referrer.expireAt = baseTime + oneDayMs;
           }
-          
+
           await c.env.DCA_USERS.put(`user:${referrerId}`, JSON.stringify(referrer));
         }
-        
+
         await c.env.DCA_USERS.put(referrerStatsKey, JSON.stringify(stats));
       }
     }
@@ -417,9 +417,9 @@ app.post('/api/auth/login', async (c) => {
 app.get('/api/user/me', userAuth, async (c) => {
   const userId = c.get('userId');
   const user = await c.env.DCA_USERS.get<User>(`user:${userId}`, 'json');
-  
+
   if (!user) return errorResponse(c, 'User not found', 404);
-  
+
   if (user.tier === 'pro' && user.expireAt && user.expireAt < Date.now()) {
     user.tier = 'free';
     user.expireAt = undefined;
@@ -455,7 +455,7 @@ app.post('/api/code/redeem', userAuth, async (c) => {
   const durationMs = codeData.durationDays * 24 * 60 * 60 * 1000;
   const currentExpiry = (user.tier === 'pro' && user.expireAt) ? user.expireAt : Date.now();
   const baseTime = (currentExpiry > Date.now()) ? currentExpiry : Date.now();
-  
+
   user.tier = 'pro';
   user.expireAt = baseTime + durationMs;
 
@@ -482,8 +482,8 @@ app.post('/api/referral/create', userAuth, async (c) => {
 // #region agent log
 // Add root path handler for health check
 app.get('/', async (c) => {
-  fetch('http://127.0.0.1:7245/ingest/b0325a71-d6a6-49b4-aae8-cccb2a6eb4b3',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'worker/src/index.ts:501',message:'Root path accessed',data:{path:c.req.path,method:c.req.method},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  return c.json({ 
+  fetch('http://127.0.0.1:7245/ingest/b0325a71-d6a6-49b4-aae8-cccb2a6eb4b3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'worker/src/index.ts:501', message: 'Root path accessed', data: { path: c.req.path, method: c.req.method }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
+  return c.json({
     service: 'DCA Simulator API',
     version: '1.0.0',
     status: 'online',
@@ -497,18 +497,52 @@ app.get('/', async (c) => {
 // #endregion
 
 export default {
-  fetch: app.fetch,
+  async fetch(request: Request, env: Bindings, ctx: ExecutionContext) {
+    const url = new URL(request.url);
+
+    // 支持子路径部署：去除 /dca-simulator 前缀用于 API 路由匹配
+    const prefix = '/dca-simulator';
+    let effectivePath = url.pathname;
+    if (effectivePath.startsWith(prefix)) {
+      effectivePath = effectivePath.slice(prefix.length) || '/';
+    }
+
+    if (effectivePath.startsWith('/api')) {
+      // 重写 URL 去除前缀，以便 Hono 路由正确匹配
+      const rewrittenUrl = new URL(request.url);
+      rewrittenUrl.pathname = effectivePath;
+      const rewrittenRequest = new Request(rewrittenUrl.toString(), request);
+      return app.fetch(rewrittenRequest, env, ctx);
+    }
+    // Static assets - 保留原始路径，因为 dist 目录结构是 dist/dca-simulator/
+    try {
+      let res = await env.ASSETS.fetch(request as any);
+      if (res.status === 404) {
+        // SPA fallback: 非文件请求返回 index.html
+        if (!effectivePath.match(/\.[a-zA-Z0-9]+$/)) {
+          // 使用 /dca-simulator/index.html 因为文件在 dist/dca-simulator/ 下
+          const fallbackPath = url.pathname.startsWith(prefix)
+            ? `${prefix}/index.html`
+            : '/index.html';
+          return await env.ASSETS.fetch(new URL(fallbackPath, request.url) as any);
+        }
+      }
+      return res;
+    } catch {
+      return new Response("Internal Error", { status: 500 });
+    }
+  },
   async scheduled(event: any, env: Bindings, ctx: ExecutionContext) {
     console.log('⏰ Scheduled Event Triggered');
-    
+
     // Get config
     const rawConfig = await env.DCA_DATA.get('assets_config');
     if (!rawConfig) {
-        console.log('No asset config found, skipping update.');
-        return;
+      console.log('No asset config found, skipping update.');
+      return;
     }
     const config: AssetConfig[] = JSON.parse(rawConfig);
-    
+
     // Update data (last 1 month is usually enough for daily/monthly cron)
     const count = await updateAssetData(env, config, '1mo');
     console.log(`✅ Updated ${count} records.`);

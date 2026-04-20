@@ -1,10 +1,13 @@
-name = "dca-simulator-api"
-main = "src/index.ts"
-compatibility_date = "2024-01-01"
-workers_dev = true
+name = "dca-simulator"
+main = "worker/src/index.ts"
+compatibility_date = "2024-09-23"
+assets = { directory = "./dist", binding = "ASSETS" }
 
-
-
+routes = [
+  { pattern = "dca.soniclab.cc/*", zone_name = "soniclab.cc" },
+  { pattern = "soniclab.cc/dca-simulator/*", zone_name = "soniclab.cc" },
+  { pattern = "www.soniclab.cc/dca-simulator/*", zone_name = "soniclab.cc" }
+]
 [[kv_namespaces]]
 binding = "DCA_USERS"
 id = "9ad5213e8f2c4203b0386cbf8f269271" # User provided ID

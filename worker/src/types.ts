@@ -1,3 +1,5 @@
+import type { KVNamespace, Fetcher } from '@cloudflare/workers-types';
+
 export interface Bindings {
   DCA_USERS: KVNamespace;
   DCA_CODES: KVNamespace;
@@ -6,6 +8,7 @@ export interface Bindings {
   DCA_DATA: KVNamespace;
   ADMIN_PASSWORD: string;
   JWT_SECRET: string;
+  ASSETS: Fetcher;
 }
 
 export interface User {
@@ -34,43 +37,43 @@ export interface ActivationCode {
 }
 
 export enum AssetType {
-    // Crypto
-    BTC = 'BTC',
-    ETH = 'ETH',
-    SOL = 'SOL',
-    BNB = 'BNB',
-    XRP = 'XRP',
-    ADA = 'ADA',
-    DOGE = 'DOGE',
-    
-    // Indices
-    SP500 = 'SP500',
-    NASDAQ = 'NASDAQ',
-    CSI300 = 'CSI300',
-    HSI = 'HSI',
-    NIKKEI = 'NIKKEI',
-    
-    // US Stocks (Tech Giants)
-    AAPL = 'AAPL',
-    MSFT = 'MSFT',
-    GOOGL = 'GOOGL',
-    AMZN = 'AMZN',
-    META = 'META',
-    NVDA = 'NVDA',
-    TSLA = 'TSLA',
-    NFLX = 'NFLX',
-    AMD = 'AMD',
-    INTC = 'INTC',
-    V = 'V',
-    JNJ = 'JNJ',
-    PFE = 'PFE',
-    PG = 'PG',
-    
-    // Commodities
-    GOLD = 'GOLD',
-    SILVER = 'SILVER',
-    OIL = 'OIL',
-  }
+  // Crypto
+  BTC = 'BTC',
+  ETH = 'ETH',
+  SOL = 'SOL',
+  BNB = 'BNB',
+  XRP = 'XRP',
+  ADA = 'ADA',
+  DOGE = 'DOGE',
+
+  // Indices
+  SP500 = 'SP500',
+  NASDAQ = 'NASDAQ',
+  CSI300 = 'CSI300',
+  HSI = 'HSI',
+  NIKKEI = 'NIKKEI',
+
+  // US Stocks (Tech Giants)
+  AAPL = 'AAPL',
+  MSFT = 'MSFT',
+  GOOGL = 'GOOGL',
+  AMZN = 'AMZN',
+  META = 'META',
+  NVDA = 'NVDA',
+  TSLA = 'TSLA',
+  NFLX = 'NFLX',
+  AMD = 'AMD',
+  INTC = 'INTC',
+  V = 'V',
+  JNJ = 'JNJ',
+  PFE = 'PFE',
+  PG = 'PG',
+
+  // Commodities
+  GOLD = 'GOLD',
+  SILVER = 'SILVER',
+  OIL = 'OIL',
+}
 
 export interface AssetConfig {
   symbol: string; // Internal key (e.g. BTC)
